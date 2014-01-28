@@ -10,8 +10,7 @@ Quick Start
 1. Download the repository.
 2. Make sure you have installed the dependencies (see Sec. Dependencies).
 3. Run the setup.py (under Linux in the command line: python setup.py build_ext --inplace)
-4. Run one of the examples.
-5. 
+4. Run example01.py (python example01.py).
 
 Module Descriptions
 ---------
@@ -53,11 +52,13 @@ The code was mainly used and tested on Ubuntu 12.04 64-bit systems with:
 - Numpy 1.7.1
 - Scipy 0.12.0
 - GLS 1.15
+- Matplotlib 1.1.1rc
 
 Only the latter is the standard repository version of Ubuntu. Otherwise older versions (e.g. standard Ubuntu) sometime exhibit faulty behavior. Short reasoning for the packages:
 
 - Numpy (with C-bindings for Cython) and its ndarrays are used as data storage and interface between classes. This is intended for easy data handling from/with Python and to use the convenient garbage collection for the arrays. Within the classes/functions typed memoryviews are used for performance.
 - Scipy is used for some exotic functions, but is increasingly replaced by Cython/C-functions or libraries for better performance. It is desirable to replace most or all Scipy dependencies in the future.
 - For random number generation the Mersenne-Twister of the GSL is used and some special functions. 
+- Matplotlib is mainly used in the examples for graphical output. It is highly recommended but isn't stricly necessary for running the code.
 
 Furthermore the SuperLU library is used to solve the Poisson problem (currently through the Scipy implementation). UMFPACK provides similar sophisticated LU-decomposition and might be a better choice, or a slim/tailered Cython implementation of a suitable LU-decomposition.
