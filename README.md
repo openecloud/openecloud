@@ -32,7 +32,7 @@ Module to store and modifiy particle data, e.g. doing a Boris push.
 
 ### particleBoundary
 
-This is more or less a helper module to implement different particle boundaries. This boundary is different from the grid boundary in in the *Grid* class (although they should fit in all sensible cases).
+This is more or less a helper module to implement different particle boundaries. This boundary is not automatically the same physical boundary as the grid boundary in the *grid* module.
 
 ### particleEmitter
 
