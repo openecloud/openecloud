@@ -1,7 +1,7 @@
 openecloud
 ==========
 
-Particle-in-cell code for electron cloud studies. 
+Particle-in-cell code for electron-cloud studies. 
 Although the code already can be used for buidup simulation it will be extended and improved in future updates. We are very much interested in feedback and contributions of the community. The documentation will be extended in the future as well, but is intended to only contain a general description. For further details one can look at the examples or the comments in the source code.
 
 Quick Start
