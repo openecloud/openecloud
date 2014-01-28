@@ -10,7 +10,7 @@ Quick Start
 1. Download the repository.
 2. Make sure you have installed the dependencies (see Sec. Dependencies).
 3. Run the setup.py (under Linux in the command line: python setup.py build_ext --inplace)
-4. Run example01.py (python example01.py).
+4. Run example01.py (under Linux in the command line: python example01.py).
 
 Module Descriptions
 ---------
@@ -75,3 +75,7 @@ Only the latter is the standard repository version of Ubuntu. Otherwise older ve
 - Matplotlib is mainly used in the examples for graphical output. It is highly recommended but isn't stricly necessary for running the code.
 
 Furthermore the SuperLU library is used to solve the Poisson problem (currently through the Scipy implementation). UMFPACK provides similar sophisticated LU-decomposition and might be a better choice, or a slim/tailered Cython implementation of a suitable LU-decomposition.
+
+
+Outlook
+---------
