@@ -36,7 +36,7 @@ This is more or less a helper module to implement different particle boundaries.
 
 ### particleEmitter
 
-This module implements different particle emitters which for example take the particles absorbed by the *particleBoundary* class to calculate secondary electrons emitted from the boundary.
+This module implements different particle emitters which for example take the particles absorbed by the *particleBoundary* class to calculate secondary electrons emitted from the boundary. Contains loaders for inital particle distributions as well.
 
 ### particleManagement
 
@@ -44,7 +44,7 @@ Provides methods to manage the particle number in the simulations. This is neces
 
 ### beam
 
-Some simple methods to provide a rigid beam charge distribution which can be imprinted on the grid.
+Some simple methods to provide a rigid beam charge distribution which can be imprinted on the grid. The user can add his beam profile here.
 
 ### gslWrap
 
