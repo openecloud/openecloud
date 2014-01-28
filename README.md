@@ -15,11 +15,11 @@ Quick Start
 Module Descriptions
 ---------
 
-Every module usually consists of a main class which is used to store relevant data for the specific purpose in an object. The object is then used to manipulate the conatining data with provided function. For example the class *particles* stores the particle coordinates and a push of these particle coordinates can be done with one of the *borisPush* functions.
+Every module usually consists of a main class which is used to store relevant data for the specific purpose in an object. The object is then used to manipulate the conatining data with provided function. For example the module *particles* conatins the class *Particles* whichstores the particle coordinates and a push of these particle coordinates can be done with one of the *borisPush* functions in the same module. Modules start with lowercase and classes with capital letters.
 
 ### grid
 
-A basic module to handle the properties of the computational grid, like grid lengths and number of cells in each direction, and data on the grid. Supports cut-cell boundaries. Only supports equidistant (in each direction) and cartesian grids for now, but this is mainly due to the particles module and not due to the grid and poissonSolver module. A grid object is handed to every function which needs data of or on the grid. Note that the grid boundary for field computations is implemented here, but particle boundaries are implemented in the *particleBoundary* class.
+A basic module to handle the properties of the computational grid, like grid lengths and number of cells in each direction. Supports cut-cell boundaries. Only supports equidistant (in each direction) and cartesian grids for now, but this is mainly due to the particles module and not due to the *grid* and *poissonSolver* module. A *Grid* object is handed to every function which needs data of or on the grid. Note that the grid boundary for field computations is implemented here, but particle boundaries are implemented in the *ParticleBoundary* class.
 
 ### poissonSolver
 
@@ -32,7 +32,7 @@ Module to store and modifiy particle data, e.g. doing a Boris push.
 
 ### particleBoundary
 
-This is more or less a helper module to implement different particle boundaries. This boundary is different from the grid boundary in in the *grid* class (although they should fit in all sensible cases).
+This is more or less a helper module to implement different particle boundaries. This boundary is different from the grid boundary in in the *Grid* class (although they should fit in all sensible cases).
 
 ### particleEmitter
 
