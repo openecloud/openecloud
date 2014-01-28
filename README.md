@@ -38,10 +38,23 @@ This is more or less a helper module to implement different particle boundaries.
 
 This module implements different particle emitters which for example take the particles absorbed by the *particleBoundary* class to calculate secondary electrons emitted from the boundary.
 
+### particleManagement
+
+Provides methods to manage the particle number in the simulations. This is necessary due to the exponential growth of the electrons in buildup simulations. Currently only very simple algorithms are used.
 
 ### beam
 
 Some simple methods to provide a rigid beam charge distribution which can be imprinted on the grid.
+
+### gslWrap
+
+Wraps several functions of the GSL library (mainly random number generation and special functions).
+
+### constants
+
+Module to store and provide global constants.
+
+
 
 
 Dependencies
