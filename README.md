@@ -77,5 +77,6 @@ Only the latter is the standard repository version of Ubuntu. Otherwise older ve
 Furthermore the SuperLU library is used to solve the Poisson problem (currently through the Scipy implementation). UMFPACK provides similar sophisticated LU-decomposition and might be a better choice, or a slim/tailered Cython implementation of a suitable LU-decomposition.
 
 
+
 Outlook
 ---------
