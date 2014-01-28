@@ -5,7 +5,7 @@ Particle-in-cell code for electron cloud studies.
 
 
 Dependencies
-==========
+---------
 
 The code was mainly used and tested on Ubuntu 12.04 64-bit systems with:
 - Cython 0.19
