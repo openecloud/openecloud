@@ -12,6 +12,7 @@ The code was mainly used and tested on Ubuntu 12.04 64-bit systems with:
 - Numpy 1.7.1
 - Scipy 0.12.0
 - GLS 1.15
+
 Only the latter is the standard repository version of Ubuntu. Otherwise older versions (e.g. standard Ubuntu) sometime exhibit faulty behavior. Short reasoning for the packages:
 
 - Numpy (with C-bindings for Cython) and its ndarrays are used as data storage and interface between classes. This is intended for easy data handling from/with Python. Within the classes/functions typed memoryviews are used for performance.
