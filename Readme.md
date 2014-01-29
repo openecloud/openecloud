@@ -9,7 +9,7 @@ Quick Start
 ---------
 
 1. Download the code from the [repository](https://github.com/openecloud/openecloud).
-2. Make sure you have installed the dependencies (see Sec. Dependencies).
+2. Make sure you have installed the dependencies (see Sec. **Dependencies**).
 3. Run the setup.py (under Linux in the command line: python setup.py build_ext --inplace)
 4. Run example01.py (under Linux in the command line: python example01.py).
 
@@ -77,7 +77,7 @@ The code was mainly used and tested on Ubuntu 12.04 64-bit systems with:
 - Matplotlib 1.1.1rc
 - GCC 4.6.3
 
-Only GSL and GCC are the standard repository versions of Ubuntu 12.04. Otherwise older versions (e.g. standard Ubuntu) sometime exhibit faulty behavior. 
+Only GSL and GCC are the standard repository versions of Ubuntu 12.04. Otherwise older versions (e.g. standard Ubuntu) sometime exhibit faulty behavior. Newer versions of the packages should work most likely. There is no easy way to get the code working on Windows systems, but for all Linux systems it should be easy to adapt the code (see Sec. **Tips and Tricks**)
 
 Short reasoning for the packages:
 
@@ -91,7 +91,7 @@ Furthermore the SuperLU library is used to solve the Poisson problem (currently 
 
 Tips and Tricks
 --------
-- It may be necessary to replace 
+- Depending on your system it may be necessary to replace 
   - include_dirs.append("/usr/local/include/")
   - library_dirs.append("/usr/local/lib/")
   
