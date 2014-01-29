@@ -1,7 +1,7 @@
 openecloud
 ==========
 
-openECLOUD is a particle-in-cell code for electron-cloud studies. The code mainly focuses on the buildup of the electron cloud, but is intended to provide tracking studies together with [PyORBIT](https://code.google.com/p/py-orbit/) and methods for the simplified simulation of microwave transmission. The code in general is intended as an open environment and community project. It is programmed in [Cython](http://cython.org/), which can be naively understood as a hybrid of Python and C/C++. The code can easily extended in Python, C/C++ or Cython; the latter is highly recommended.
+openECLOUD is a particle-in-cell code for electron-cloud studies. The code mainly focuses on the buildup of the electron cloud, but is intended to provide tracking studies together with [PyORBIT](https://code.google.com/p/py-orbit/) and methods for other related calculations. The code in general is intended as an open environment and community project. It is programmed in [Cython](http://cython.org/), which can be naively understood as a hybrid of Python and C/C++. The code can easily extended in Python, C/C++ or Cython; the latter is highly recommended.
 
 Although the code already can be used for buidup simulation it will be extended and improved in future updates. We are very much interested in feedback and contributions of the community. The documentation will be extended in the future as well, but is intended to only contain a general description. For further details one can look at the examples or the comments in the source code.
 
@@ -10,7 +10,7 @@ Quick Start
 
 1. Download the latest version of the code from the [repository](https://github.com/openecloud/openecloud).
 2. Make sure you have installed the dependencies (see Sec. **Dependencies**).
-3. Run the setup.py (under Linux in the command line: python setup.py build_ext --inplace)
+3. Run the setup.py (under Linux in the command line: python setup.py build_ext --inplace).
 4. Run example01.py (under Linux in the command line: python example01.py).
 
 Module Descriptions
@@ -77,7 +77,7 @@ The code was mainly used and tested on Ubuntu 12.04 64-bit systems with:
 - Matplotlib 1.1.1rc
 - GCC 4.6.3
 
-Only GSL and GCC are the standard repository versions of Ubuntu 12.04. Otherwise older versions (e.g. standard Ubuntu) sometime exhibit faulty behavior. Newer versions of the packages should work most likely. There is no easy way to get the code working on Windows systems, but for all Linux systems it should be easy to adapt the code (see Sec. **Tips and Tricks**)
+Only GSL and GCC are the standard repository versions of Ubuntu 12.04. Otherwise older versions (e.g. standard Ubuntu) sometime exhibit faulty behavior. Newer versions of the packages should work most likely. There is no easy way to get the code working on Windows systems, but for all Linux systems it should be easy to adapt the code (see Sec. **Tips and Tricks**).
 
 Short reasoning for the packages:
 
@@ -101,5 +101,12 @@ Tips and Tricks
   
   in setup.py.
 
+
 Outlook
 ---------
+
+In this section some thoughts on future developments and plans are given. We would gladly accept any input from the community.
+1. Arbitrary magnetic fields, e.g. quadrupolar or solenoidal fields.
+2. Include the generation of seed electrons by residual gas ionization, synchrotron radiation and beam losses. This most likely requires better particle managment routines as stated below.
+3. Arbitrary boundaries/beam pipes. The main challenge is the boundary interaction of particles. The boundary can be modeled with linear or [higher order splines](http://www.particleincell.com/blog/2013/cubic-line-intersection/).
+4. Extent the particle management to better algorithms. One idea is the [particle management with the help of kd-trees](http://arxiv.org/abs/1301.1552), but implementing fast kd-tree methods appliable for the given data structure is quite time consuming and still ongoing.
