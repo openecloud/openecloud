@@ -6,9 +6,7 @@
 import numpy
 cimport numpy
 cimport cython
-cimport openmp
-from cython.parallel cimport prange
-import scipy.constants as spc
+from constants cimport *
 import time
 
 
@@ -20,11 +18,11 @@ class Particles:
         self.macroParticleCount = 0 
         
         if particleSpecies == 'electrons':
-            self.particleMass = spc.m_e
-            self.particleCharge = -spc.elementary_charge
+            self.particleMass = m_e
+            self.particleCharge = -elementary_charge
         elif particleSpecies == 'protons':
-            self.particleMass = spc.m_p
-            self.particleCharge = spc.elementary_charge
+            self.particleMass = m_p
+            self.particleCharge = elementary_charge
         else:
             raise NotImplementedError("Not yet implemented.")
         

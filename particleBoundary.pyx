@@ -6,7 +6,6 @@
 import numpy
 cimport numpy
 cimport cython
-import scipy as sp
 
 # Import some C methods.
 cdef extern from "math.h":
@@ -341,18 +340,18 @@ cdef class AbsorbElliptical(ParticleBoundary):
                 
          
 #     def calculateInteractionPoint(self):       
-#         self.remainingTimeStep = sp.empty(self.absorbedParticles.shape[0], order='C')
+#         self.remainingTimeStep = numpy.empty(self.absorbedParticles.shape[0], order='C')
 #         absorbCircularC.calculateInteractionPoint(self.absorbedParticles, self.remainingTimeStep, self.gridObj.getRadius(), self.epsFailsafe)
 # 
 #     def calculateNormalVectors(self):       
-#         self.normalVectors = sp.empty((self.absorbedParticles.shape[0],2), order='C')
+#         self.normalVectors = numpy.empty((self.absorbedParticles.shape[0],2), order='C')
 #         absorbCircularC.calculateNormalVectors(self.absorbedParticles, self.normalVectors)
 #         
 #     def clipToDomain(self):
 #         particleData = self.particlesObj.getParticleData()
-#         particleDataRadiusClip = sp.sqrt(particleData[:,0]**2 + particleData[:,1]**2)
-#         particleDataRadiusClip = sp.clip(particleDataRadiusClip,0,self.gridObj.getRadius())/particleDataRadiusClip
-#         particleData[:,:2] *= particleDataRadiusClip[:,sp.newaxis]
+#         particleDataRadiusClip = numpy.sqrt(particleData[:,0]**2 + particleData[:,1]**2)
+#         particleDataRadiusClip = numpy.clip(particleDataRadiusClip,0,self.gridObj.getRadius())/particleDataRadiusClip
+#         particleData[:,:2] *= particleDataRadiusClip[:,numpy.newaxis]
 
 # Checks if point is in konvex polygon.
 # http://demonstrations.wolfram.com/AnEfficientTestForAPointToBeInAConvexPolygon/

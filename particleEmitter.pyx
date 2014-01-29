@@ -6,7 +6,8 @@
 import numpy
 cimport numpy
 cimport cython
-cimport gslWrap
+cimport specFun
+cimport randomGen
 from constants cimport *
 
 
@@ -40,11 +41,11 @@ cpdef homoLoader(gridObj, particlesObj, unsigned int macroParticleCount, double 
         double lx = gridObj.getLx(), ly = gridObj.getLy()
  
     while ii < macroParticleCount:
-        x = (gslWrap.rand()-0.5)*lx
-        y = (gslWrap.rand()-0.5)*ly
+        x = (randomGen.rand()-0.5)*lx
+        y = (randomGen.rand()-0.5)*ly
         while not gridBoundaryObj.isInside(x, y):
-            x = (gslWrap.rand()-0.5)*lx
-            y = (gslWrap.rand()-0.5)*ly 
+            x = (randomGen.rand()-0.5)*lx
+            y = (randomGen.rand()-0.5)*ly 
         particleData[ii,0] = x
         particleData[ii,1] = y     
         ii += 1
@@ -223,11 +224,11 @@ cdef class FurmanEmitter:
             
             pr = deltaTSPrime/m
             for ii in range(m+1):
-                pN[ii] = gslWrap.binom(ii,pr,m)*(1-deltaE-deltaR)
+                pN[ii] = specFun.binom(ii,pr,m)*(1-deltaE-deltaR)
             pN[1] += deltaE + deltaR
             pNCumSum = 0
             nSec[jj] = m
-            u = gslWrap.rand()
+            u = randomGen.rand()
             for ii in range(m):
                 pNCumSum += pN[ii]
                 if u<=pNCumSum:
@@ -252,26 +253,26 @@ cdef class FurmanEmitter:
                     aE = deltaE/pN[1]
                     aR = deltaR/pN[1]
                       
-                    u = gslWrap.rand()
+                    u = randomGen.rand()
 
                     if u<aE:
                         if self.scaleSigmaE==0:
-                            eSec[0] = e0[jj] - abs(sigmaE*gslWrap.randn())
+                            eSec[0] = e0[jj] - abs(sigmaE*randomGen.randn())
                         else: 
-                            eSec[0] = e0[jj] - abs(sigmaE*sqrt(e0[jj]/300)*gslWrap.randn())
+                            eSec[0] = e0[jj] - abs(sigmaE*sqrt(e0[jj]/300)*randomGen.randn())
                         if eSec[0]<0.:
-                            eSec[0] = gslWrap.rand()*e0[jj] 
+                            eSec[0] = randomGen.rand()*e0[jj] 
                     elif u < aE + aR:
-                        eSec[0] = e0[jj]*gslWrap.rand()**(1./(1.+q))
+                        eSec[0] = e0[jj]*randomGen.rand()**(1./(1.+q))
                     else:              
-                        eSec[0] = epsN[0]*gslWrap.gammaincinv(pSmallN[0],gslWrap.rand()*gslWrap.gammainc(pSmallN[0],e0[jj]/epsN[0])) # Check gamma
+                        eSec[0] = epsN[0]*specFun.gammaincinv(pSmallN[0],randomGen.rand()*specFun.gammainc(pSmallN[0],e0[jj]/epsN[0])) # Check gamma
            
                 else:   
-                    p0 = gslWrap.gammainc(nSec[jj]*pSmallN[nSec[jj]-1],e0[jj]/epsN[nSec[jj]-1])
+                    p0 = specFun.gammainc(nSec[jj]*pSmallN[nSec[jj]-1],e0[jj]/epsN[nSec[jj]-1])
                        
                     for ii in range(nSec[jj]-1):
-                        thetaK[ii] = asin(sqrt(gslWrap.betaincinv(pSmallN[nSec[jj]-1]*(nSec[jj]-ii-1),pSmallN[nSec[jj]-1],gslWrap.rand()))) # Check signs, machine epsilon, check formula, check beta
-                    y = sqrt(gslWrap.gammaincinv(nSec[jj]*pSmallN[nSec[jj]-1],gslWrap.rand()*p0))     
+                        thetaK[ii] = asin(sqrt(specFun.betaincinv(pSmallN[nSec[jj]-1]*(nSec[jj]-ii-1),pSmallN[nSec[jj]-1],randomGen.rand()))) # Check signs, machine epsilon, check formula, check beta
+                    y = sqrt(specFun.gammaincinv(nSec[jj]*pSmallN[nSec[jj]-1],randomGen.rand()*p0))     
                     yK[0] = y*cos(thetaK[0])
                     yK[nSec[jj]-1] = y
                     for ii in range(nSec[jj]-1):
@@ -293,10 +294,10 @@ cdef class FurmanEmitter:
                     secondaries[kk+5] = absorbedParticles[nCoords*jj+5]
         
                     vSec = sqrt(eFactorInv*eSec[ii])           
-                    thetaSec = asin(gslWrap.rand())
+                    thetaSec = asin(randomGen.rand())
                     cosThetaSec = cos(thetaSec)
                     sinThetaSec = sin(thetaSec)
-                    phiSec = gslWrap.rand()*pi*2.
+                    phiSec = randomGen.rand()*pi*2.
                     cosPhiSec = cos(phiSec)
                     sinPhiSec = sin(phiSec)
                     temp01 = cosThetaSec*normalVectors[2*jj] - sinThetaSec*normalVectors[2*jj+1]
@@ -422,12 +423,12 @@ cdef class SecElecEmitter:
                 deltaE = deltaE/temp*deltaERmax
                 deltaR = deltaR/temp*deltaERmax
                                            
-            if gslWrap.rand()<=deltaE:
+            if randomGen.rand()<=deltaE:
                 nSecE[jj] = 1
-            if gslWrap.rand()<=deltaR:
+            if randomGen.rand()<=deltaR:
                 nSecR[jj] = 1
             deltaTSFloor = <unsigned int> deltaTS
-            if gslWrap.rand()<=(deltaTS-deltaTSFloor):
+            if randomGen.rand()<=(deltaTS-deltaTSFloor):
                 nSecTS[jj] = deltaTSFloor + 1
             else:
                 nSecTS[jj] = deltaTSFloor
@@ -453,7 +454,7 @@ cdef class SecElecEmitter:
                     secondaries[kk+4] = -absorbedParticles[nCoords*jj+4]
                     currentSec += 1    
                 if nSecR[jj] == 1:
-                    vFac = sqrt(gslWrap.rand()**(1./(1.+q)))
+                    vFac = sqrt(randomGen.rand()**(1./(1.+q)))
                     kk = nCoords*currentSec
                     secondaries[kk] = absorbedParticles[nCoords*jj]
                     secondaries[kk+1] = absorbedParticles[nCoords*jj+1]
@@ -465,22 +466,22 @@ cdef class SecElecEmitter:
                 if nSecTS[jj] > 0:
                     eSum = 0.
                     for ii in range(nSecTS[jj]):
-                        eSec[ii] = exp(sigmaETS*gslWrap.randn()+muETS)
+                        eSec[ii] = exp(sigmaETS*randomGen.randn()+muETS)
                         eSum += eSec[ii]   
                     
                     if eSum>e0[jj]:               
                         for ii in range(nSecTS[jj]):
-                            eSec[ii] = gslWrap.rand()*e0[jj]/nSecTS[jj]
+                            eSec[ii] = randomGen.rand()*e0[jj]/nSecTS[jj]
                     for ii in range(nSecTS[jj]):
                         kk = nCoords*currentSec
                         secondaries[kk] = absorbedParticles[nCoords*jj]
                         secondaries[kk+1] = absorbedParticles[nCoords*jj+1]
                         secondaries[kk+5] = absorbedParticles[nCoords*jj+5]
                         vSec = sqrt(eFactorInv*eSec[ii])           
-                        thetaSec = asin(gslWrap.rand())
+                        thetaSec = asin(randomGen.rand())
                         cosThetaSec = cos(thetaSec)
                         sinThetaSec = sin(thetaSec)
-                        phiSec = gslWrap.rand()*pi*2.
+                        phiSec = randomGen.rand()*pi*2.
                         cosPhiSec = cos(phiSec)
                         sinPhiSec = sin(phiSec)
                         temp01 = cosThetaSec*normalVectors[2*jj] - sinThetaSec*normalVectors[2*jj+1]
@@ -556,12 +557,12 @@ cdef class SimpleSecEmitter:
                               
             deltaTS = 1.4*s*e0[jj]/eHat/(s-1+(e0[jj]/eHat)**s)  
 
-            if gslWrap.rand()<=deltaE:
+            if randomGen.rand()<=deltaE:
                 nSecE[jj] = 1
-            if gslWrap.rand()<=deltaR:
+            if randomGen.rand()<=deltaR:
                 nSecR[jj] = 1
 
-            if gslWrap.rand()<=(deltaTS-(<unsigned int> deltaTS)):
+            if randomGen.rand()<=(deltaTS-(<unsigned int> deltaTS)):
                 nSecTS[jj] = <unsigned int> (deltaTS+1.)
             else:
                 nSecTS[jj] = <unsigned int> (deltaTS)
@@ -587,7 +588,7 @@ cdef class SimpleSecEmitter:
                     secondaries[kk+4] = -absorbedParticles[nCoords*jj+4]
                     currentSec += 1    
                 if nSecR[jj] == 1:
-                    vFac = sqrt(gslWrap.rand())
+                    vFac = sqrt(randomGen.rand())
                     kk = nCoords*currentSec
                     secondaries[kk] = absorbedParticles[nCoords*jj]
                     secondaries[kk+1] = absorbedParticles[nCoords*jj+1]
@@ -598,7 +599,7 @@ cdef class SimpleSecEmitter:
                     currentSec += 1      
                 if nSecTS[jj] > 0:              
                     for ii in range(nSecTS[jj]):
-                        eSec[ii] = gslWrap.rand()*5
+                        eSec[ii] = randomGen.rand()*5
                     for ii in range(nSecTS[jj]):
                         kk = nCoords*currentSec
                         secondaries[kk] = absorbedParticles[nCoords*jj]

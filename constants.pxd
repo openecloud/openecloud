@@ -1,2 +1,3 @@
 cdef:
-	double c, elementary_charge, m_e, pi, machineEpsilon
+	double c, elementary_charge, m_e, m_p 
+	double pi, machineEpsilon
