@@ -8,7 +8,7 @@ Although the code already can be used for buidup simulation it will be extended 
 Quick Start
 ---------
 
-1. Download the code from the [repository](https://github.com/openecloud/openecloud).
+1. Download the latest version of the code from the [repository](https://github.com/openecloud/openecloud).
 2. Make sure you have installed the dependencies (see Sec. **Dependencies**).
 3. Run the setup.py (under Linux in the command line: python setup.py build_ext --inplace)
 4. Run example01.py (under Linux in the command line: python example01.py).
