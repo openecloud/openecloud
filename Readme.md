@@ -1,13 +1,14 @@
 openecloud
 ==========
 
-Particle-in-cell code for electron-cloud studies. 
+Particle-in-cell code for electron-cloud studies. The code mainly focuses on the buildup of the electron cloud, but is intended to provide tracking studies together with [PyORBIT](https://code.google.com/p/py-orbit/). The code is not feature complete yet and in general is intended as an open environment and community project.
+
 Although the code already can be used for buidup simulation it will be extended and improved in future updates. We are very much interested in feedback and contributions of the community. The documentation will be extended in the future as well, but is intended to only contain a general description. For further details one can look at the examples or the comments in the source code.
 
 Quick Start
 ---------
 
-1. Download the repository.
+1. Download the code from the [repository](https://github.com/openecloud/openecloud).
 2. Make sure you have installed the dependencies (see Sec. Dependencies).
 3. Run the setup.py (under Linux in the command line: python setup.py build_ext --inplace)
 4. Run example01.py (under Linux in the command line: python example01.py).
