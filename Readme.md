@@ -16,7 +16,7 @@ Quick Start
 Module Descriptions
 ---------
 
-Every module usually consists of a main class which is used to store relevant data for the specific purpose in an object. The object is then used to manipulate the conatining data with provided function. For example the module *particles* conatins the class *Particles* which stores the particle coordinates and a push of these particle coordinates can be done with one of the *borisPush* functions in the same module. Modules start with lowercase and classes with capital letters.
+Every module usually consists of a main class which is used to store relevant data for the specific purpose in an object. The object is then used to manipulate the conatining data with provided function. For example the module *particles* conatins the class *Particles* which stores the particle coordinates and a push of these particle coordinates can be done with one of the *borisPush* functions in the same module. Modules start with lowercase and classes with capital letters. Modules usually consist of the main class (with the same name, only capital initial letter) and some helper functions.
 
 ### grid
 
