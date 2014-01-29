@@ -1,7 +1,7 @@
 openecloud
 ==========
 
-Particle-in-cell code for electron-cloud studies. The code mainly focuses on the buildup of the electron cloud, but is intended to provide tracking studies together with [PyORBIT](https://code.google.com/p/py-orbit/). The code is not feature complete yet and in general is intended as an open environment and community project. It is programmed in [Cython](http://cython.org/), which can be naively understood as a hybrid of Python and C/C++. The code can easily extended in Python, C/C++ or Cython; the latter is highly recommended.
+openECLOUD is a particle-in-cell code for electron-cloud studies. The code mainly focuses on the buildup of the electron cloud, but is intended to provide tracking studies together with [PyORBIT](https://code.google.com/p/py-orbit/) and smaller methods for the simplified simulation of microwave transmission. The code is not feature complete yet and in general is intended as an open environment and community project. It is programmed in [Cython](http://cython.org/), which can be naively understood as a hybrid of Python and C/C++. The code can easily extended in Python, C/C++ or Cython; the latter is highly recommended.
 
 Although the code already can be used for buidup simulation it will be extended and improved in future updates. We are very much interested in feedback and contributions of the community. The documentation will be extended in the future as well, but is intended to only contain a general description. For further details one can look at the examples or the comments in the source code.
 
