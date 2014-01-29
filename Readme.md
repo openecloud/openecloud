@@ -46,9 +46,13 @@ Provides methods to manage the particle number in the simulations. This is neces
 
 Some simple methods to provide a rigid beam charge distribution which can be imprinted on the grid. The user can add his beam profile here.
 
-### gslWrap
+### specFun
 
-Wraps several functions of the GSL library (mainly random number generation and special functions).
+Wraps several special functions of the GSL mainly needed by the *particleEmitter* module.
+
+### randomGen
+
+Wraps some random number generation of the GSL.
 
 ### constants
 
