@@ -106,6 +106,7 @@ Outlook
 ---------
 
 In this section some thoughts on future developments and plans are given. We would gladly accept any input from the community.
+
 1. Arbitrary magnetic fields, e.g. quadrupolar or solenoidal fields.
 2. Include the generation of seed electrons by residual gas ionization, synchrotron radiation and beam losses. This most likely requires better particle managment routines as stated below.
 3. Arbitrary boundaries/beam pipes. The main challenge is the boundary interaction of particles. The boundary can be modeled with linear or [higher order splines](http://www.particleincell.com/blog/2013/cubic-line-intersection/).
