@@ -1,7 +1,7 @@
 openecloud
 ==========
 
-Particle-in-cell code for electron-cloud studies. The code mainly focuses on the buildup of the electron cloud, but is intended to provide tracking studies together with [PyORBIT](https://code.google.com/p/py-orbit/). The code is not feature complete yet and in general is intended as an open environment and community project.
+Particle-in-cell code for electron-cloud studies. The code mainly focuses on the buildup of the electron cloud, but is intended to provide tracking studies together with [PyORBIT](https://code.google.com/p/py-orbit/). The code is not feature complete yet and in general is intended as an open environment and community project. It is programmed in [Cython](http://cython.org/), which can be naively understood as a hybrid of Python and C/C++. The code can easily extended in Python, C/C++ or Cython; the latter is highly recommended.
 
 Although the code already can be used for buidup simulation it will be extended and improved in future updates. We are very much interested in feedback and contributions of the community. The documentation will be extended in the future as well, but is intended to only contain a general description. For further details one can look at the examples or the comments in the source code.
 
@@ -77,9 +77,11 @@ The code was mainly used and tested on Ubuntu 12.04 64-bit systems with:
 - Matplotlib 1.1.1rc
 - GCC 4.6.3
 
-Only the latter is the standard repository version of Ubuntu. Otherwise older versions (e.g. standard Ubuntu) sometime exhibit faulty behavior. Short reasoning for the packages:
+Only GSL and GCC are the standard repository versions of Ubuntu 12.04. Otherwise older versions (e.g. standard Ubuntu) sometime exhibit faulty behavior. 
 
-- Numpy (with C-bindings for Cython) and its ndarrays are used as data storage and interface between classes. This is intended for easy data handling from/with Python and to use the convenient garbage collection for the arrays. Within the classes/functions typed memoryviews are used for performance.
+Short reasoning for the packages:
+
+- Numpy with its C-bindings for Cython and its ndarrays are used as data storage and interface between classes. This is intended for easy data handling from/with Python and to use the convenient garbage collection for the arrays. Within the classes/functions typed memoryviews are used for performance.
 - Scipy is used for some exotic functions, but is increasingly replaced by Cython/C-functions or libraries for better performance. It is desirable to replace most or all Scipy dependencies in the future.
 - For random number generation the Mersenne-Twister of the GSL is used and some special functions. 
 - Matplotlib is mainly used in the examples for graphical output. It is highly recommended but isn't stricly necessary for running the code.
