@@ -95,7 +95,8 @@ Tips and Tricks
   
   with
   - include_dirs.append("/usr/include/")
-  - library_dirs.append("/usr/lib/")  
+  - library_dirs.append("/usr/lib/")
+  
   in setup.py.
 
 Outlook
