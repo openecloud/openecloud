@@ -89,15 +89,12 @@ Furthermore the SuperLU library is used to solve the Poisson problem (currently 
 
 Tips and Tricks
 --------
-It may be necessary to replace 
-- include_dirs.append("/usr/local/include/")
-- library_dirs.append("/usr/local/lib/")
-
+- It may be necessary to replace 
+  - include_dirs.append("/usr/local/include/")
+  - library_dirs.append("/usr/local/lib/")
 with
-
-- include_dirs.append("/usr/include/")
-- library_dirs.append("/usr/lib/")
-
+  - include_dirs.append("/usr/include/")
+  - library_dirs.append("/usr/lib/")
 in setup.py.
 
 Outlook
