@@ -295,7 +295,53 @@ cpdef borisPushNonRel(particlesObj, double dt):
         
         particleData[nCoords*ii] += dt*particleData[nCoords*ii+2]
         particleData[nCoords*ii+1] += dt*particleData[nCoords*ii+3]
+#TRACKING IN MULTIPOLES UP TO SEXTUPOLES
+cpdef borisPushNonRelMultipole(particlesObj, double dt, double order, double strength):
 
+    cdef: 
+        unsigned int ii  
+        unsigned int nCoords = particlesObj.getNCoords()                                                               
+        unsigned int macroParticleCount = particlesObj.getMacroParticleCount()                
+        double chargeDtOverMassHalf = 0.5*particlesObj.getParticleCharge()/particlesObj.getParticleMass()*dt      
+        double tSqSumPlOneInvTimTwo
+                                  
+        numpy.ndarray[numpy.double_t, ndim = 2] particleDataNumpy = particlesObj.getParticleData()
+        double* particleData = &particleDataNumpy[0,0]                                     
+        numpy.ndarray[numpy.double_t, ndim = 2] buff01 = particlesObj.getEAtParticles()      
+        double* eAtParticles = <double*> buff01.data                                    
+        numpy.ndarray[numpy.double_t] buff02 = particlesObj.getBAtParticles()
+        double* bAtParticles = <double*> buff02.data
+        double ts0,ts1,ts2,vs0,vs1,vs2
+        double b0atparticle=0.0
+        double b1atparticle=0.0
+    
+    for ii in range(macroParticleCount):
+        particleData[nCoords*ii+2] += chargeDtOverMassHalf*eAtParticles[2*ii]
+        particleData[nCoords*ii+3] += chargeDtOverMassHalf*eAtParticles[2*ii+1]
+        if order==1:
+         b1atparticle=strength
+        if order==2:
+         b0atparticle=-strength*particleData[nCoords*ii+1]
+         b1atparticle=-strength*particleData[nCoords*ii]
+        if order==3:
+         b0atparticle=-6.0*strength*particleData[nCoords*ii+1]*particleData[nCoords*ii]
+         b1atparticle=-3.0*strength*(particleData[nCoords*ii]*particleData[nCoords*ii]-particleData[nCoords*ii+1]*particleData[nCoords*ii+1])
+        ts0 = chargeDtOverMassHalf*b0atparticle
+        ts1 = chargeDtOverMassHalf*b1atparticle
+        ts2 = 0.0
+        vs0 = particleData[nCoords*ii+2] + particleData[nCoords*ii+3]*ts2 - particleData[nCoords*ii+4]*ts1
+        vs1 = particleData[nCoords*ii+3] + particleData[nCoords*ii+4]*ts0 - particleData[nCoords*ii+2]*ts2
+        vs2 = particleData[nCoords*ii+4] + particleData[nCoords*ii+2]*ts1 - particleData[nCoords*ii+3]*ts0
+        tSqSumPlOneInvTimTwo = 2./(1. + ts0*ts0 + ts1*ts1 + ts2*ts2)
+        ts0 *= tSqSumPlOneInvTimTwo    
+        ts1 *= tSqSumPlOneInvTimTwo    
+        ts2 *= tSqSumPlOneInvTimTwo
+        particleData[nCoords*ii+2] += vs1*ts2 - vs2*ts1 + chargeDtOverMassHalf*eAtParticles[2*ii]
+        particleData[nCoords*ii+3] += vs2*ts0 - vs0*ts2 + chargeDtOverMassHalf*eAtParticles[2*ii+1]
+        particleData[nCoords*ii+4] += vs0*ts1 - vs1*ts0
+        
+        particleData[nCoords*ii] += dt*particleData[nCoords*ii+2]
+        particleData[nCoords*ii+1] += dt*particleData[nCoords*ii+3]
 
 cpdef addAndRemoveParticles(particlesObj, numpy.ndarray[numpy.double_t, ndim = 2] addParticleDataNumpy, numpy.ndarray[numpy.uint16_t] keepParticlesNumpy):
 
