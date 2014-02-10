@@ -43,7 +43,7 @@ poissonSolverObj = PoissonSolver(gridObj)                           # Poisson so
 
 # Some setup
 homoLoader(gridObj, particlesObj, nParticles, weightInit)           			    # Loads a homogeneous particle distribution
-bAtGridPoints = magneticField.multipoleExpansion(gridObj, [0., 10., 0., 1.])        # Prepare quadrupole field (with error).
+bAtGridPoints = magneticField.multipoleExpansion(gridObj, [0., 5., 0., 0.01])        # Prepare quadrupole field (with error).
 
 physicalParticleCount = numpy.zeros(nTimeSteps, dtype=numpy.uint0) 			        # History of physical particle count
 macroParticleCount = numpy.zeros(nTimeSteps, dtype=numpy.uint0)     			    # History of macro particle count
