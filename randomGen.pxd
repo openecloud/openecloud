@@ -1,5 +1,5 @@
 cdef: 
 	void seed(unsigned long x)
-	double rand()
-	double randn()
-	unsigned long randi(unsigned long n)
+	double rand() nogil
+	double randn() nogil
+	unsigned long randi(unsigned long n) nogil

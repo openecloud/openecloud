@@ -7,10 +7,11 @@ from constants cimport *
 
 # Simple C methods
 cdef extern from "math.h":
-    double exp(double x)
-    double sqrt(double x)
-    double log(double x)
-    double sin(double x)
+    double exp(double x) nogil
+    double sqrt(double x) nogil
+    double log(double x) nogil
+    double sin(double x) nogil
+    double fabs(double x) nogil
 
 # GSL imports of functions.
 cdef extern from "gsl/gsl_sf_gamma.h":
@@ -30,26 +31,26 @@ cdef extern from "gsl/gsl_randist.h":
     
 # Simple wrappers.
 # Could be replaced by direct implementation in the future.
-cdef double binom(unsigned int k, double p, unsigned int n):
+cdef double binom(unsigned int k, double p, unsigned int n) nogil:
     return (<double> gsl_ran_binomial_pdf(k, p, n))
     
-cdef double betainc(double a, double b, double x):
+cdef double betainc(double a, double b, double x) nogil:
     return (<double> gsl_sf_beta_inc(a, b, x))
 
-cdef double gammainc(double a, double x):
+cdef double gammainc(double a, double x) nogil:
     return (<double> gsl_sf_gamma_inc_P(a, x))
 
-cdef double gammaincd(double a, double x, double gammaa):
+cdef double gammaincd(double a, double x, double gammaa) nogil:
     return (<double> x**(a-1)/exp(x)/gammaa)
 
-cdef double gamma(double a):
+cdef double gamma(double a) nogil:
     return (<double> gsl_sf_gamma(a))
 
-cdef double lngamma(double a):
+cdef double lngamma(double a) nogil:
     return (<double> gsl_sf_lngamma(a))
 
 # Inspired by boost library documentation.
-cdef double betaincinv(double a, double b, double p, double acc = 1.e-12):
+cdef double betaincinv(double a, double b, double p, double acc = 1.e-12) nogil:
 
     cdef:
         double q = 1 - p
@@ -199,7 +200,7 @@ cdef double betaincinv(double a, double b, double p, double acc = 1.e-12):
                     dxdenom = 2.*der1**2 - err*der2
                     t = 2*err*der1/dxdenom
                     x -= t
-                    if abs(t) < 0.1*x:
+                    if fabs(t) < 0.1*x:
                         jj = 0
                         break
             x = 1-x
@@ -243,7 +244,7 @@ cdef double betaincinv(double a, double b, double p, double acc = 1.e-12):
         dxdenom = 2.*der1**2 - err*der2
         t = 2*err*der1/dxdenom
         x -= t
-        if abs(t) < EPS*x:
+        if fabs(t) < EPS*x:
             break 
 
     if abSwitch == 1:
@@ -251,20 +252,20 @@ cdef double betaincinv(double a, double b, double p, double acc = 1.e-12):
     else:
         return x
 
-cdef void swap(double* a, double* b):
+cdef void swap(double* a, double* b) nogil:
     cdef double temp
     temp = a[0]
     a[0] = b[0]
     b[0] = temp
 
-cdef void logical_not(unsigned int* boolInt):
+cdef void logical_not(unsigned int* boolInt) nogil:
     if boolInt[0] == 1:
         boolInt[0] = 0
     else:
         boolInt[0] = 1
     
 # Numerical Recipes p. 263
-cdef double gammaincinv(double a, double p, double acc = 1.e-9):
+cdef double gammaincinv(double a, double p, double acc = 1.e-9) nogil:
     cdef:
         int j
         double x, err, t, u, pp, lna1, afac, a1=a-1
@@ -274,7 +275,8 @@ cdef double gammaincinv(double a, double p, double acc = 1.e-9):
     
     
     if a<=0:
-        raise ValueError('a has to be larger than 0.')
+        with gil:
+            raise ValueError('a has to be larger than 0.')
     if p>=1.:
         return max(100., a + 100.*sqrt(a))
     if p<=0.:
@@ -310,7 +312,7 @@ cdef double gammaincinv(double a, double p, double acc = 1.e-9):
         x -= t
         if x<=0.:
             x = 0.5*(x + t)
-        if abs(t) < EPS*x:
+        if fabs(t) < EPS*x:
             j = 0
             break 
     if j==19 and x<a:

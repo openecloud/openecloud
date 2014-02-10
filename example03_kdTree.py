@@ -1,8 +1,5 @@
 '''
-This example is a low-resolution simulation of the electron cloud buildup in
-a LHC-like scenario. Dynamic graphical output is used to illustrate the
-development of the electron cloud and the behavior of the code. The graphical
-output takes a lot of time, so this is not recommended for normal use.
+This example is based on example01, but with better particle management.
 '''
 
 # openecloud imports
@@ -31,7 +28,7 @@ nMaxParticles = nParticles      # Maximum number of macro particles
 dt = 2.155172413795e-11         # Time step
 nTimeSteps = 10000              # Number of time steps of the simulation
 nAnimate = 20                   # Number of time steps between graphical output
-nTimeStepsPartMan = 1160        # Number of time steps between particle management
+nTimeStepsPartMan = 100         # Number of time steps between particle management
 nHistoryOut = 1000              # Number of time steps between history output
 
 # Generate all objects
@@ -56,18 +53,19 @@ for ii in range(nTimeSteps):
     
     physicalParticleCount[ii] = numpy.sum(particlesObj.getParticleData()[:,5]) # Calculate and save particle count 
     macroParticleCount[ii] = particlesObj.getMacroParticleCount()              # Save macro particle count
-    
-    # Particle management only if necessary and at the correct time step.
-    # This method (globalRandom) is done only rarely as it introduces noise. For better methods see other examples.
-    if ii>0 and numpy.mod(ii,nTimeStepsPartMan) == 0:                   
-        particleManagement.globalRandom(gridObj, particlesObj, nMaxParticles) 
 
-    # Calculate the grid weights of the particles and scatter the charge to the grid
+    # Particle management only if necessary and at the correct time step
+    if ii>0 and (macroParticleCount[ii]>nMaxParticles*1.05 or macroParticleCount[ii]<nMaxParticles*0.95) and numpy.mod(ii, nTimeStepsPartMan) == 0:                
+        particleManagement.localRandom(gridObj, particlesObj, particleBoundaryObj, nMaxParticles)
+
+    # Callculate the grid weights of the particles and scatter the charge to the grid
     particlesObj.calcGridWeights(gridObj)    
     particlesObj.chargeToGrid(gridObj)       
 
     # Graphical output (Not recommended during runtime in general, because slow. Just for example.)
     if ii>0 and numpy.mod(ii, nAnimate) == 0:       
+        #plot.plotMacroParticles(gridObj, particlesObj, figObj = fig0)
+        #plot.plotParticleCount(physicalParticleCount, dt, ii, figObj = fig0)
         plot.plotAllAtRuntime(gridObj, particlesObj, poissonSolverObj, physicalParticleCount, 
                               macroParticleCount, ii, figObj = fig0)
         mpl.draw()
@@ -83,7 +81,7 @@ for ii in range(nTimeSteps):
     # Interpolate electric field to particle position
     particlesObj.eFieldToParticles(gridObj, poissonSolverObj.getEAtGridPoints())
     
-    # Push particles (without magnetic field. This special function is faster than the general one.)
+    # Push particles without magnetic field. This function with flag '0' is faster than the general one.)
     particlesObj.borisPush(dt, typeBField=0)
 
     # Check which particles are inside and absorb particles outside
@@ -93,6 +91,7 @@ for ii in range(nTimeSteps):
     # If particles were absorbed at the particle boundary do secondary emission
     if particleBoundaryObj.getAbsorbedMacroParticleCount() > 0:
         particleBoundaryObj.calculateInteractionPoint()
-        particleBoundaryObj.calculateNormalVectors()
-        particlesObj.addAndRemoveParticles(secElecEmitObj.generateSecondaries(), particlesObj.getIsInside())
+        particleBoundaryObj.calculateNormalVectors()        
+        secondaries = secElecEmitObj.generateSecondaries()
+        particlesObj.addAndRemoveParticles(secondaries, particlesObj.getIsInside())
        

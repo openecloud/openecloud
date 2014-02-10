@@ -6,17 +6,25 @@ import scipy.sparse as spsp
 
 # Import some C methods.
 cdef extern from "math.h":
-    double sin(double x)     
-    double cos(double x)
-    double sqrt(double x)
+    double sin(double x) nogil     
+    double cos(double x) nogil
+    double sqrt(double x) nogil
     
 '''
 Class to calculate and store grid quantities.
 
 Requires scipy (sp), scipy.sparse (spsp)
 '''
-class Grid:
+cdef class Grid:
 
+    # cdef:
+        # unsigned int nx, ny, np
+        # double lx, ly, dx, dy, cutCellAcc, cutCellMinEdgeLength, scanAroundPoint
+        # numpy.ndarray xMesh, yMesh, cosAlpha, sinAlpha, cosBeta, sinBeta 
+        # numpy.ndarray insidePoints, insidePointsInd, insideEdges, insideEdgesInd
+        # numpy.ndarray insideCells, insideCellsInd
+        # numpy.ndarray ds, dsi, da, dai, dst, dsti, dat, dati
+        # object gridBoundaryObj, edgeToNode
     '''
     Constructor.
     
@@ -34,10 +42,10 @@ class Grid:
     def __init__(self, nxy, lxy, boundType, boundFunc = None, cutCellAcc = 1e-12, cutCellMinEdgeLength = 1e-6, scanAroundPoint = 1e-6):
 
         # Calculate and store basic parameters of the uniform grid. For cut-cell some accuracy parameters.
-        self.nx = int(nxy[0])
-        self.ny = int(nxy[1])
-        self.lx = sp.double(lxy[0])
-        self.ly = sp.double(lxy[1])
+        self.nx = <unsigned int> nxy[0]
+        self.ny = <unsigned int> nxy[1]
+        self.lx = <double> lxy[0]
+        self.ly = <double> lxy[1]
         self.dx = self.lx/(self.nx-1.)
         self.dy = self.ly/(self.ny-1.)
         self.np = self.nx*self.ny
@@ -357,7 +365,8 @@ class Grid:
         temp02 = temp * sp.tile(self.xMesh >= 0, self.ny)
         temp03 = temp * sp.repeat(self.yMesh <= 0, self.nx)
         temp04 = temp * sp.repeat(self.yMesh >= 0, self.nx)
-        diag = 1.*(self.insidePoints + sp.roll(self.insidePoints,-1) + sp.roll(self.insidePoints,1) + sp.roll(self.insidePoints,-self.nx) + sp.roll(self.insidePoints,self.nx))
+        diag = 1.*(self.insidePoints + sp.roll(self.insidePoints,-1) + sp.roll(self.insidePoints,1) + 
+                   sp.roll(self.insidePoints,-self.nx) + sp.roll(self.insidePoints,self.nx))
         self.edgeToNode = spsp.bmat([
                                      [spsp.dia_matrix(([diag, sp.roll(temp02,-1), sp.roll(temp01,1), sp.roll(temp04,-self.nx), sp.roll(temp03,self.nx)], [0, -1, 1, -self.nx, self.nx]), shape=(self.np, self.np)),
                                       None],
@@ -372,33 +381,33 @@ class Grid:
     Getter functions from here on.
     
     '''
-    def getXMesh(self):
+    cpdef double[:] getXMesh(Grid self):
         # Uniform grid for cut cell as well.
         return self.xMesh
     
-    def getYMesh(self):
+    cpdef double[:] getYMesh(Grid self):
         # Uniform grid for cut cell as well.
         return self.yMesh   
 
-    def getLx(self):
+    cpdef double getLx(self):
         return self.lx
     
-    def getLy(self):
+    cpdef double getLy(self):
         return self.ly
     
-    def getDx(self):
+    cpdef double getDx(self):
         return self.dx
     
-    def getDy(self):
+    cpdef double getDy(self):
         return self.dy    
     
-    def getNx(self):
+    cpdef unsigned int getNx(self):
         return self.nx 
     
-    def getNy(self):
+    cpdef unsigned int getNy(self):
         return self.ny 
     
-    def getNp(self):
+    cpdef unsigned int getNp(self):
         return self.np 
     
     def getInsidePoints(self):

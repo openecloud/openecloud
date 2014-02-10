@@ -7,3 +7,5 @@ cdef:
     double m_p = 1.672621777e-27
     double pi = 3.141592653589793
     double machineEpsilon = sys.float_info.epsilon
+    double doubleMaxVal = sys.float_info.max
+    double doubleMinVal = sys.float_info.min

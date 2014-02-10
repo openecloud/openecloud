@@ -1,0 +1,3 @@
+import testStructMemoryview
+
+testStructMemoryview.testFunction()

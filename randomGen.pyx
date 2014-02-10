@@ -25,12 +25,12 @@ gsl_rng_set(r, <unsigned long> time.time()*256)
 cdef void seed(unsigned long x):  
     gsl_rng_set(r, x)
 
-cdef double rand():
+cdef double rand() nogil:
     return gsl_rng_uniform(r)
 
-cdef double randn():
+cdef double randn() nogil:
     return gsl_ran_gaussian_ziggurat(r, 1.)
 
-cdef unsigned long randi(unsigned long n):
+cdef unsigned long randi(unsigned long n) nogil:
     return gsl_rng_uniform_int(r, n)
 

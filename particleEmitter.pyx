@@ -43,11 +43,14 @@ cpdef homoLoader(gridObj, particlesObj, unsigned int macroParticleCount, double 
     while ii < macroParticleCount:
         x = (randomGen.rand()-0.5)*lx
         y = (randomGen.rand()-0.5)*ly
-        while not gridBoundaryObj.isInside(x, y):
+        while not gridBoundaryObj.isInside(x, y):   # Could be speed up by direct C calls (.pxd!).
             x = (randomGen.rand()-0.5)*lx
             y = (randomGen.rand()-0.5)*ly 
         particleData[ii,0] = x
-        particleData[ii,1] = y     
+        particleData[ii,1] = y 
+        particleData[ii,2] = (randomGen.rand()-0.5)*(10000.*doubleMinVal)      # Give finite velocity, but
+        particleData[ii,3] = (randomGen.rand()-0.5)*(10000.*doubleMinVal)      # negligible small.
+        particleData[ii,4] = (randomGen.rand()-0.5)*(10000.*doubleMinVal)    
         ii += 1
      
     for ii in range(macroParticleCount):
@@ -82,7 +85,7 @@ cdef class FurmanEmitter:
         elif material=='copperVSim':
             self.copperModVSim(seyMax, reflec)   
         else:
-            raise ValueError('Material ' + '"' + material + '" not implemented.')
+            raise ValueError('Material ' + '"' + str(material) + '" not implemented.')
             
         self.particleMass = self.particlesObj.getParticleMass()
         self.warningFlag00 = 0

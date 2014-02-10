@@ -63,7 +63,7 @@ def plotMacroParticles(gridObj, particlesObj, figObj = None, subPlot = None, col
 def plotChargeDensity(gridObj, particlesObj, figObj = None, subPlotObj = None, logScale = True, show = False):
 
     ( [nx, ny], [lx, ly], [dx, dy] ) = gridObj.getGridBasics()  # @UnusedVariable
-    q = sp.reshape(particlesObj.getChargeOnGrid()*gridObj.dati,(ny,nx))
+    q = sp.reshape(particlesObj.getChargeOnGrid()*gridObj.getDati(),(ny,nx))
     
     if figObj == None:
         figObj = mpl.figure()
@@ -139,7 +139,7 @@ def plotAllAtRuntime(gridObj, particlesObj, poissonSolverObj, particleCounts, ma
                             origin='lower', aspect=ly/lx, interpolation='nearest')
     macroDensityPlot.set_title('Macro Density')
     
-    q = sp.reshape(particlesObj.chargeOnGrid*gridObj.dati,(ny,nx))
+    q = sp.reshape(particlesObj.getChargeOnGrid()*gridObj.getDati(),(ny,nx))
     meanQ = sp.mean(q)
     chargeDensityPlot.imshow(sp.log10(q/meanQ+1), extent=extent, origin='lower', aspect=ly/lx)
     chargeDensityPlot.set_title('Charge Density')

@@ -7,12 +7,12 @@ import numpy
 cimport numpy
 cimport cython
 from constants cimport *
-import time
+cimport randomGen
+cimport grid
 
 
-
-class Particles:
-      
+cdef class Particles:
+        
     def __init__(self, particleSpecies, particleType):
         
         self.macroParticleCount = 0 
@@ -35,112 +35,343 @@ class Particles:
         self.particleData = numpy.empty((0,self.nCoords), dtype=numpy.double)
 
 
-    def setBAtParticles(self, bAtParticles):
+    cpdef object setBAtParticles(Particles self, double[:,:] bAtParticles):
         self.bAtParticles = bAtParticles
                
-    def setParticleData(self, particleData):
+    cpdef object setParticleData(Particles self, double[:,:] particleData):
             
-        if particleData.flags['C_CONTIGUOUS']:
+        if particleData.is_c_contig():
             self.particleData = particleData
         else:
             self.particleData = particleData.copy()
         self.macroParticleCount = particleData.shape[0]
-        self.inCell = numpy.empty(self.macroParticleCount, dtype=numpy.uint32)
+        self.inCell = numpy.empty(self.macroParticleCount, dtype=numpy.uintc)
         self.weightLowXLowY = numpy.empty(self.macroParticleCount, dtype=numpy.double)
         self.weightUpXLowY = numpy.empty(self.macroParticleCount, dtype=numpy.double)
         self.weightLowXUpY = numpy.empty(self.macroParticleCount, dtype=numpy.double)
         self.weightUpXUpY = numpy.empty(self.macroParticleCount, dtype=numpy.double)
         self.eAtParticles = numpy.empty((self.macroParticleCount,2), dtype=numpy.double) 
-        self.isInside = numpy.empty(self.macroParticleCount, dtype=numpy.uint16) 
+        self.isInside = numpy.empty(self.macroParticleCount, dtype=numpy.ushort) 
 
-    def getParticleData(self):
-        return self.particleData[:self.macroParticleCount]
+    cpdef numpy.ndarray getParticleData(Particles self):
+        return numpy.asarray(self.particleData[:self.macroParticleCount])
     
-    def getFullParticleData(self):
+    cpdef double[:,:] getFullParticleData(Particles self):
         return self.particleData
     
-    def getNCoords(self):
+    cpdef unsigned int getNCoords(Particles self):
         return self.nCoords   
     
-    def getMacroParticleCount(self):
+    cpdef unsigned int getMacroParticleCount(Particles self):
         return self.macroParticleCount
     
-    def setMacroParticleCount(self, macroParticleCount):
+    cpdef object setMacroParticleCount(Particles self, unsigned int macroParticleCount):
         self.macroParticleCount = macroParticleCount
     
-    def getChargeOnGrid(self):
-        return self.chargeOnGrid
+    cpdef numpy.ndarray getChargeOnGrid(Particles self):
+        return numpy.asarray(self.chargeOnGrid)
     
-    def setChargeOnGrid(self, chargeOnGrid):
+    cpdef object setChargeOnGrid(Particles self, double[:] chargeOnGrid):
         self.chargeOnGrid = chargeOnGrid
     
-    def getParticleCharge(self):
+    cpdef double getParticleCharge(Particles self):
         return self.particleCharge
     
-    def getParticleMass(self):
+    cpdef double getParticleMass(Particles self):
         return self.particleMass
     
-    def getInCell(self):
+    cpdef unsigned int[:] getInCell(Particles self):
         return self.inCell[:self.macroParticleCount]
     
-    def getFullIsInside(self):
+    cpdef unsigned short[:] getFullIsInside(Particles self):
         return self.isInside
     
-    def getIsInside(self):
-        return self.isInside[:self.macroParticleCount]
+    cpdef numpy.ndarray getIsInside(Particles self):
+        return numpy.asarray(self.isInside[:self.macroParticleCount])
     
-#     def setIsInside(self, isInside):
-#         self.isInside = isInside
-    
-    def getWeightLowXUpY(self):
+    cpdef double[:] getWeightLowXUpY(Particles self):
         return self.weightLowXUpY[:self.macroParticleCount]
     
-    def getWeightLowXLowY(self):
+    cpdef double[:] getWeightLowXLowY(Particles self):
         return self.weightLowXLowY[:self.macroParticleCount]
     
-    def getWeightUpXUpY(self):
+    cpdef double[:] getWeightUpXUpY(Particles self):
         return self.weightUpXUpY[:self.macroParticleCount]
     
-    def getWeightUpXLowY(self):
+    cpdef double[:] getWeightUpXLowY(Particles self):
         return self.weightUpXLowY[:self.macroParticleCount]
     
-    def getEAtParticles(self):
+    cpdef double[:,:] getEAtParticles(Particles self):
         return self.eAtParticles[:self.macroParticleCount]
     
-    def getBAtParticles(self):
+    cpdef double[:,:] getBAtParticles(Particles self):
         return self.bAtParticles
+     
+    cpdef double getMeanWeight(Particles self):
+        cdef:
+            double[:,:] particleData = self.particleData
+            double mean = 0
+            unsigned int ii, macroParticleCount = self.macroParticleCount          
+        for ii in range(macroParticleCount):
+            mean+= particleData[ii,5]        
+        mean/= macroParticleCount
+        return mean
 
+    cpdef object sortByColumn(Particles self, unsigned int sortByColumn):
+        _quicksortByColumn(self.particleData[:self.macroParticleCount], 0, self.macroParticleCount-1, self.nCoords, sortByColumn)
 
-cpdef calcGridWeights(object particlesObj, object gridObj):  
+    cpdef object calcGridWeights(Particles self, grid.Grid gridObj):
+        _calcGridWeights(&self.particleData[0,0], &self.inCell[0], &self.weightLowXLowY[0], &self.weightUpXLowY[0],
+                         &self.weightLowXUpY[0], &self.weightUpXUpY[0],
+                         1./gridObj.getDx(), 1./gridObj.getDy(), gridObj.getLx()*0.5, gridObj.getLy()*0.5,
+                         gridObj.getNx(), self.nCoords, self.macroParticleCount)
 
-    # Variable declarations. Some repeatedly used numbers.
+    cpdef object eFieldToParticles(Particles self, grid.Grid gridObj, double[:] eAtGridPoints):
+        _fieldToParticles(&eAtGridPoints[0], &self.eAtParticles[0,0], &self.inCell[0], 
+                          &self.weightLowXLowY[0], &self.weightUpXLowY[0],
+                          &self.weightLowXUpY[0], &self.weightUpXUpY[0], gridObj.getNx(), 
+                          gridObj.getNp(), self.macroParticleCount)
+    
+    cpdef object bFieldToParticles(Particles self, grid.Grid gridObj, double[:] bAtGridPoints):
+        _fieldToParticles(&bAtGridPoints[0], &self.bAtParticles[0,0], &self.inCell[0], 
+                          &self.weightLowXLowY[0], &self.weightUpXLowY[0],
+                          &self.weightLowXUpY[0], &self.weightUpXUpY[0], 
+                          gridObj.getNx(), gridObj.getNp(), self.macroParticleCount)
+ 
+    cpdef object chargeToGrid(Particles self, grid.Grid gridObj):
+        cdef:
+            unsigned int np = gridObj.getNp()
+        if self.chargeOnGrid.shape[0] < np: 
+            self.chargeOnGrid = numpy.empty(np, dtype=numpy.double)
+        _chargeToGrid(&self.particleData[0,0], &self.inCell[0], &self.weightLowXLowY[0], &self.weightUpXLowY[0],
+                      &self.weightLowXUpY[0], &self.weightUpXUpY[0], &self.chargeOnGrid[0], self.particleCharge, 
+                      gridObj.getNx(), gridObj.getNp(), self.nCoords, self.macroParticleCount)
+
+    cpdef object borisPush(Particles self, double dt, unsigned short typeBField = 2):     
+        # No magnetic field.
+        if typeBField==0:
+            _borisPushNoB(&self.particleData[0,0], &self.eAtParticles[0,0], dt, 
+                          self.particleCharge/self.particleMass*dt, self.macroParticleCount, self.nCoords)
+        # Constant (dipole/in space) magnetic field.
+        elif typeBField==1:
+            _borisPushConstB(&self.particleData[0,0], &self.eAtParticles[0,0], &self.bAtParticles[0,0], dt, 
+                             0.5*self.particleCharge/self.particleMass*dt, self.macroParticleCount, self.nCoords)
+        # General magnetic field.
+        else:
+            _borisPush(&self.particleData[0,0], &self.eAtParticles[0,0], &self.bAtParticles[0,0], dt, 
+                       0.5*self.particleCharge/self.particleMass*dt, self.macroParticleCount, self.nCoords)
+
+    cpdef object addAndRemoveParticles(Particles self, double[:,:] addParticleData, unsigned short[:] keepParticles):
+        cdef:
+            unsigned int addParticleCount = addParticleData.shape[0]
+            unsigned int keepParticleCount = numpy.sum(keepParticles)
+            unsigned int newParticleCount = keepParticleCount + addParticleCount
+            unsigned int oldParticleDataLen = self.particleData.shape[0]
+            double[:,:] overwriteParticleData
+        # Nothing to do here.
+        if addParticleCount==0 and keepParticleCount==self.macroParticleCount:
+            pass
+        # Only remove particles.
+        elif addParticleCount==0:
+            _removeParticles(&self.particleData[0,0], &keepParticles[0],
+                             self.macroParticleCount, self.nCoords, newParticleCount)
+        # Add and remove particles. Memory for particleData might have to be increased.
+        else:
+            if newParticleCount>oldParticleDataLen:
+                overwriteParticleData = numpy.empty((<unsigned int> (newParticleCount*1.1),self.nCoords),
+                                                    dtype=numpy.double)      
+                _addAndRemoveParticlesNewArray(&self.particleData[0,0], &addParticleData[0,0], &keepParticles[0], 
+                                               addParticleCount, keepParticleCount, self.macroParticleCount, 
+                                               self.nCoords, &overwriteParticleData[0,0])
+                self.setParticleData(overwriteParticleData)          
+            else:
+                _addAndRemoveParticles(&self.particleData[0,0], &addParticleData[0,0], &keepParticles[0], 
+                                       keepParticleCount, addParticleCount, self.macroParticleCount,
+                                       self.nCoords)                                        
+        self.macroParticleCount = newParticleCount                                      
+
+        
+cdef void _addAndRemoveParticlesNewArray(double* fullParticleData, double* addParticleData, unsigned short* keepParticles,
+                                         unsigned int addParticleCount, unsigned int keepParticleCount, 
+                                         unsigned int oldParticleCount, unsigned int nCoords, 
+                                         double* overwriteParticleData) nogil:
     cdef: 
-        double dxi = 1./gridObj.getDx()
-        double dyi = 1./gridObj.getDy()
-        double lxHalf = gridObj.getLx()*0.5
-        double lyHalf = gridObj.getLy()*0.5
-        unsigned int nx = gridObj.getNx()           
-        unsigned int nCoords = particlesObj.getNCoords()
-        unsigned int macroParticleCount = particlesObj.getMacroParticleCount()
+        unsigned int ii = 0, jj = 0, ll = 0, kk, ind1, ind2
+    while jj < keepParticleCount:
+        if keepParticles[ii] == 1:
+            ind1 = nCoords*jj
+            ind2 = nCoords*ii
+            for kk in range(nCoords):
+                overwriteParticleData[ind1+kk] = fullParticleData[ind2+kk]
+            jj += 1 
+        ii += 1   
+    for ii in range(addParticleCount):
+        ind1 = nCoords*(keepParticleCount + ii)
+        ind2 = nCoords*ii
+        for kk in range(nCoords):
+            overwriteParticleData[ind1+kk] = addParticleData[ind2+kk]    
+        
+                                       
+cdef void _addAndRemoveParticles(double* fullParticleData, double* addParticleData, unsigned short* keepParticles, 
+                                 unsigned int keepParticleCount, unsigned int addParticleCount, 
+                                 unsigned int oldParticleCount, unsigned int nCoords) nogil:
+    cdef: 
+        unsigned int ii = 0, jj = 0, ll = 0, kk, ind1, ind2
+    while ii < addParticleCount and jj < oldParticleCount:
+        if  keepParticles[jj] == 0:
+            ind1 = nCoords*jj
+            ind2 = nCoords*ii
+            for kk in range(nCoords):
+                fullParticleData[ind1+kk] = addParticleData[ind2+kk]
+            ii += 1
+        jj += 1
+    if ii == addParticleCount:
+        ii = jj - addParticleCount
+        while ii < keepParticleCount:
+            if keepParticles[jj] == 1:
+                ind1 = nCoords*(ii+addParticleCount)
+                ind2 = nCoords*jj
+                for kk in range(nCoords):
+                    fullParticleData[ind1+kk] = fullParticleData[ind2+kk]
+                ii += 1          
+            jj += 1         
+    elif jj == oldParticleCount:
+        while ii < addParticleCount:  
+            ind1 = nCoords*jj
+            ind2 = nCoords*ii
+            for kk in range(nCoords):
+                fullParticleData[ind1+kk] = addParticleData[ind2+kk]
+            ii += 1
+            jj += 1
+            
+cdef void _removeParticles(double* fullParticleData, unsigned short* keepParticles, unsigned int oldParticleCount, 
+                           unsigned int nCoords, unsigned int newParticleCount) nogil:         
+        cdef:
+            unsigned int ll = 0, jj = 0, kk, ind1, ind2
+        ll += oldParticleCount
+        while jj < newParticleCount:
+            if keepParticles[jj] == 0:
+                while True:
+                    ll -= 1
+                    if keepParticles[ll] == 1:
+                        break                 
+                ind1 = nCoords*jj
+                ind2 = nCoords*ll
+                for kk in range(nCoords):
+                    fullParticleData[ind1+kk] = fullParticleData[ind2+kk]
+            jj += 1
+                      
+# General non-relativistic boris push for arbitrary magnetic field.
+cdef void _borisPush(double* particleData, double* eAtParticles, double* bAtParticles, double dt, 
+                     double chargeDtOverMassHalf, unsigned int macroParticleCount, unsigned int nCoords) nogil:
+    cdef: 
+        unsigned int ii     
+        double tSqSumPlOneInvTimTwo, ts0, ts1, ts2, vs0, vs1, vs2  
+        
+    for ii in range(macroParticleCount):
+        particleData[nCoords*ii+2] += chargeDtOverMassHalf*eAtParticles[2*ii]
+        particleData[nCoords*ii+3] += chargeDtOverMassHalf*eAtParticles[2*ii+1]        
+        ts0 = chargeDtOverMassHalf*bAtParticles[ii*3+0] 
+        ts1 = chargeDtOverMassHalf*bAtParticles[ii*3+1] 
+        ts2 = chargeDtOverMassHalf*bAtParticles[ii*3+2] 
+        vs0 = particleData[nCoords*ii+2] + particleData[nCoords*ii+3]*ts2 - particleData[nCoords*ii+4]*ts1
+        vs1 = particleData[nCoords*ii+3] + particleData[nCoords*ii+4]*ts0 - particleData[nCoords*ii+2]*ts2
+        vs2 = particleData[nCoords*ii+4] + particleData[nCoords*ii+2]*ts1 - particleData[nCoords*ii+3]*ts0
+        tSqSumPlOneInvTimTwo = 2./(1. + ts0*ts0 + ts1*ts1 + ts2*ts2)
+        ts0 = ts0*tSqSumPlOneInvTimTwo    
+        ts1 = ts1*tSqSumPlOneInvTimTwo    
+        ts2 = ts2*tSqSumPlOneInvTimTwo
+        particleData[nCoords*ii+2] += vs1*ts2 - vs2*ts1 + chargeDtOverMassHalf*eAtParticles[2*ii]
+        particleData[nCoords*ii+3] += vs2*ts0 - vs0*ts2 + chargeDtOverMassHalf*eAtParticles[2*ii+1]
+        particleData[nCoords*ii+4] += vs0*ts1 - vs1*ts0     
+        particleData[nCoords*ii] += dt*particleData[nCoords*ii+2]
+        particleData[nCoords*ii+1] += dt*particleData[nCoords*ii+3]
+ 
+# Non-relativistic boris push with constant (dipole/in space) magnetic field.     
+cdef void _borisPushConstB(double* particleData, double* eAtParticles, double* bAtParticles, double dt, 
+                           double chargeDtOverMassHalf, unsigned int macroParticleCount, unsigned int nCoords) nogil:
+    cdef: 
+        unsigned int ii     
+        double tSqSumPlOneInvTimTwo, s0, s1, s2, vs0, vs1, vs2
+        double t0 = chargeDtOverMassHalf*bAtParticles[0] 
+        double t1 = chargeDtOverMassHalf*bAtParticles[1] 
+        double t2 = chargeDtOverMassHalf*bAtParticles[2]    
+         
+    for ii in range(macroParticleCount):
+        particleData[nCoords*ii+2] += chargeDtOverMassHalf*eAtParticles[2*ii]
+        particleData[nCoords*ii+3] += chargeDtOverMassHalf*eAtParticles[2*ii+1]
+        vs0 = particleData[nCoords*ii+2] + particleData[nCoords*ii+3]*t2 - particleData[nCoords*ii+4]*t1
+        vs1 = particleData[nCoords*ii+3] + particleData[nCoords*ii+4]*t0 - particleData[nCoords*ii+2]*t2
+        vs2 = particleData[nCoords*ii+4] + particleData[nCoords*ii+2]*t1 - particleData[nCoords*ii+3]*t0
+        tSqSumPlOneInvTimTwo = 2./(1. + t0*t0 + t1*t1 + t2*t2)
+        s0 = t0*tSqSumPlOneInvTimTwo    
+        s1 = t1*tSqSumPlOneInvTimTwo    
+        s2 = t2*tSqSumPlOneInvTimTwo
+        particleData[nCoords*ii+2] += vs1*s2 - vs2*s1 + chargeDtOverMassHalf*eAtParticles[2*ii]
+        particleData[nCoords*ii+3] += vs2*s0 - vs0*s2 + chargeDtOverMassHalf*eAtParticles[2*ii+1]
+        particleData[nCoords*ii+4] += vs0*s1 - vs1*s0     
+        particleData[nCoords*ii] += dt*particleData[nCoords*ii+2]
+        particleData[nCoords*ii+1] += dt*particleData[nCoords*ii+3]
+               
+# Non-relativistic boris push without magnetic field.        
+cdef void _borisPushNoB(double* particleData, double* eAtParticles, double dt, double chargeDtOverMass,
+                        unsigned int macroParticleCount, unsigned int nCoords) nogil:
+    cdef: 
+        unsigned int ii
+    for ii in range(macroParticleCount):
+        particleData[nCoords*ii+2] += chargeDtOverMass*eAtParticles[2*ii]
+        particleData[nCoords*ii+3] += chargeDtOverMass*eAtParticles[2*ii+1]
+        
+        particleData[nCoords*ii] += dt*particleData[nCoords*ii+2]
+        particleData[nCoords*ii+1] += dt*particleData[nCoords*ii+3]
+
+      
+cdef void _chargeToGrid(double* particleData, unsigned int* inCell, double* weightLowXLowY, double* weightUpXLowY,
+                        double* weightLowXUpY, double* weightUpXUpY, double* chargeOnGrid, double particleCharge,
+                        unsigned int nx, unsigned int np, unsigned int nCoords, unsigned int macroParticleCount) nogil:     
+    cdef: 
+        unsigned int ii, ind
+    for ii in range(np):
+        chargeOnGrid[ii] = 0.    
+    for ii in range(macroParticleCount):
+        ind = inCell[ii]       
+        chargeOnGrid[ind] += weightLowXLowY[ii]*particleData[nCoords*ii+5]*particleCharge   
+        ind = ind + 1
+        chargeOnGrid[ind] += weightUpXLowY[ii]*particleData[nCoords*ii+5]*particleCharge
+        ind = ind - 1 + nx
+        chargeOnGrid[ind] += weightLowXUpY[ii]*particleData[nCoords*ii+5]*particleCharge
+        ind = ind + 1
+        chargeOnGrid[ind] += weightUpXUpY[ii]*particleData[nCoords*ii+5]*particleCharge
+
+    
+cdef void _fieldToParticles(double* fieldAtGridPoints, double* fieldAtParticles, unsigned int* inCell, 
+                            double* weightLowXLowY, double* weightUpXLowY,
+                            double* weightLowXUpY, double* weightUpXUpY, unsigned int nx, 
+                            unsigned int np, unsigned int macroParticleCount) nogil:                  
+    cdef: 
+        unsigned int ind, ii    
+    for ii in range(macroParticleCount):
+        ind = inCell[ii]
+        fieldAtParticles[2*ii] =  weightLowXLowY[ii]*fieldAtGridPoints[ind]         # First one has to set (=, not +=),  
+        fieldAtParticles[2*ii+1] =  weightLowXLowY[ii]*fieldAtGridPoints[ind+np]    # so values are overwritten.
+        ind = ind + 1
+        fieldAtParticles[2*ii] += weightUpXLowY[ii]*fieldAtGridPoints[ind]
+        fieldAtParticles[2*ii+1] += weightUpXLowY[ii]*fieldAtGridPoints[ind+np]
+        ind = ind - 1 + nx
+        fieldAtParticles[2*ii] += weightLowXUpY[ii]*fieldAtGridPoints[ind]
+        fieldAtParticles[2*ii+1] += weightLowXUpY[ii]*fieldAtGridPoints[ind+np]
+        ind = ind + 1
+        fieldAtParticles[2*ii] += weightUpXUpY[ii]*fieldAtGridPoints[ind]
+        fieldAtParticles[2*ii+1] += weightUpXUpY[ii]*fieldAtGridPoints[ind+np]
+
+        
+cdef void _calcGridWeights(double* particleData, unsigned int* inCell, double* weightLowXLowY, double* weightUpXLowY,
+                           double* weightLowXUpY, double* weightUpXUpY, double dxi, double dyi, double lxHalf, double lyHalf, 
+                           unsigned int nx, unsigned int nCoords, unsigned int macroParticleCount) nogil:
+    cdef: 
         double inCellCoordsNormX, inCellCoordsNormY
         unsigned int indx, indy
-        unsigned int ii
-
-    # Numpy and pointers to the numpy arrays.
-    cdef: 
-        numpy.ndarray[numpy.uint32_t] inCellNumpy = particlesObj.getInCell()
-        unsigned int* inCell = &inCellNumpy[0]
-        numpy.ndarray[numpy.double_t, ndim = 2] particleDataNumpy = particlesObj.getParticleData()
-        double* particleData = &particleDataNumpy[0,0]
-        numpy.ndarray[numpy.double_t] weightLowXLowYNumpy = particlesObj.getWeightLowXLowY()
-        double* weightLowXLowY = &weightLowXLowYNumpy[0]
-        numpy.ndarray[numpy.double_t] weightUpXLowYNumpy = particlesObj.getWeightUpXLowY()
-        double* weightUpXLowY = &weightUpXLowYNumpy[0]
-        numpy.ndarray[numpy.double_t] weightLowXUpYNumpy = particlesObj.getWeightLowXUpY()
-        double* weightLowXUpY = &weightLowXUpYNumpy[0]
-        numpy.ndarray[numpy.double_t] weightUpXUpYNumpy = particlesObj.getWeightUpXUpY()
-        double* weightUpXUpY = &weightUpXUpYNumpy[0]
-    
+        unsigned int ii    
     for ii in range(macroParticleCount):
         inCellCoordsNormX = (particleData[nCoords*ii]+lxHalf)*dxi
         inCellCoordsNormY = (particleData[nCoords*ii+1]+lyHalf)*dyi
@@ -154,284 +385,47 @@ cpdef calcGridWeights(object particlesObj, object gridObj):
         weightLowXUpY[ii] = (1-inCellCoordsNormX)*inCellCoordsNormY
         weightUpXUpY[ii] = inCellCoordsNormX*inCellCoordsNormY
         
-cpdef eFieldToParticles(particlesObj, gridObj, numpy.ndarray[numpy.double_t] eAtGridPointsNumpy):   
-    
-    # Variable declarations.
-    cdef: 
-        unsigned int nx = gridObj.getNx(), np = gridObj.getNp()
-        unsigned int macroParticleCount = particlesObj.getMacroParticleCount()      
-        unsigned int ind
-        unsigned int ii
-
-    # Numpy and pointers to the numpy arrays.
-    cdef: 
-        numpy.ndarray[numpy.uint32_t] inCellNumpy = particlesObj.getInCell()
-        unsigned int* inCell = &inCellNumpy[0]                
-        numpy.ndarray[numpy.double_t] weightLowXLowYNumpy = particlesObj.getWeightLowXLowY()
-        double *weightLowXLowY = &weightLowXLowYNumpy[0]
-        numpy.ndarray[numpy.double_t] weightUpXLowYNumpy = particlesObj.getWeightUpXLowY()
-        double *weightUpXLowY = &weightUpXLowYNumpy[0]
-        numpy.ndarray[numpy.double_t] weightLowXUpYNumpy = particlesObj.getWeightLowXUpY()
-        double *weightLowXUpY = &weightLowXUpYNumpy[0]
-        numpy.ndarray[numpy.double_t] weightUpXUpYNumpy = particlesObj.getWeightUpXUpY()
-        double *weightUpXUpY = &weightUpXUpYNumpy[0]
-        numpy.ndarray[numpy.double_t, ndim = 2] eAtParticlesNumpy = particlesObj.getEAtParticles()
-        double *eAtParticles = &eAtParticlesNumpy[0,0]
-        double *eAtGridPoints = &eAtGridPointsNumpy[0]
-    
-    for ii in range(macroParticleCount):
-        ind = inCell[ii]
-        eAtParticles[2*ii] =  weightLowXLowY[ii]*eAtGridPoints[ind]         # First one has to set (=, not +=),  
-        eAtParticles[2*ii+1] =  weightLowXLowY[ii]*eAtGridPoints[ind+np]    # so values are overwritten.
-        ind += 1
-        eAtParticles[2*ii] += weightUpXLowY[ii]*eAtGridPoints[ind]
-        eAtParticles[2*ii+1] += weightUpXLowY[ii]*eAtGridPoints[ind+np]
-        ind += -1 + nx
-        eAtParticles[2*ii] += weightLowXUpY[ii]*eAtGridPoints[ind]
-        eAtParticles[2*ii+1] += weightLowXUpY[ii]*eAtGridPoints[ind+np]
-        ind += 1
-        eAtParticles[2*ii] += weightUpXUpY[ii]*eAtGridPoints[ind]
-        eAtParticles[2*ii+1] += weightUpXUpY[ii]*eAtGridPoints[ind+np]
-
-
-cpdef chargeToGrid(particlesObj, gridObj):   
-    
-    cdef: 
-        unsigned int ii
-        unsigned int ind       
-        unsigned int nx = gridObj.getNx(), np = gridObj.getNp()
-        unsigned int nCoords = particlesObj.getNCoords()                                                   
-        unsigned int macroParticleCount = particlesObj.getMacroParticleCount()              
-        double particleCharge = particlesObj.getParticleCharge()     
-        numpy.ndarray[numpy.uint32_t] inCellNumpy = particlesObj.getInCell()
-        unsigned int* inCell = &inCellNumpy[0]                
-        numpy.ndarray[numpy.double_t] weightLowXLowYNumpy = particlesObj.getWeightLowXLowY()
-        double *weightLowXLowY = &weightLowXLowYNumpy[0]
-        numpy.ndarray[numpy.double_t] weightUpXLowYNumpy = particlesObj.getWeightUpXLowY()
-        double *weightUpXLowY = &weightUpXLowYNumpy[0]
-        numpy.ndarray[numpy.double_t] weightLowXUpYNumpy = particlesObj.getWeightLowXUpY()
-        double *weightLowXUpY = &weightLowXUpYNumpy[0]
-        numpy.ndarray[numpy.double_t] weightUpXUpYNumpy = particlesObj.getWeightUpXUpY()
-        double *weightUpXUpY = &weightUpXUpYNumpy[0]                                  
-        numpy.ndarray[numpy.double_t, ndim = 2] particleDataNumpy = particlesObj.getParticleData()
-        double* particleData = &particleDataNumpy[0,0]         
-        numpy.ndarray[numpy.double_t] chargeOnGridNumpy
-        double *chargeOnGrid
-     
-    if particlesObj.getChargeOnGrid().shape[0] < np: 
-        particlesObj.setChargeOnGrid(numpy.empty(np, dtype=numpy.double))
-    chargeOnGridNumpy = particlesObj.getChargeOnGrid()
-    chargeOnGrid = &chargeOnGridNumpy[0]
-    for ii in range(np):
-        chargeOnGrid[ii] = 0.
-    
-    for ii in range(macroParticleCount):
-        ind = inCell[ii]       
-        chargeOnGrid[ind] += weightLowXLowY[ii]*particleData[nCoords*ii+5]*particleCharge   
-        ind += 1
-        chargeOnGrid[ind] += weightUpXLowY[ii]*particleData[nCoords*ii+5]*particleCharge
-        ind += -1 + nx
-        chargeOnGrid[ind] += weightLowXUpY[ii]*particleData[nCoords*ii+5]*particleCharge
-        ind += 1
-        chargeOnGrid[ind] += weightUpXUpY[ii]*particleData[nCoords*ii+5]*particleCharge
-    
-    particlesObj.setChargeOnGrid(chargeOnGridNumpy)
- 
-
-cpdef borisPushNonRelNoB(particlesObj, double dt):
-
-    cdef: 
-        unsigned int ii
-        unsigned int nCoords = particlesObj.nCoords
-        unsigned int macroParticleCount = particlesObj.getMacroParticleCount()                
-        double chargeDtOverMass = particlesObj.getParticleCharge()/particlesObj.getParticleMass()*dt
-                                   
-        numpy.ndarray[numpy.double_t, ndim = 2] particleDataNumpy = particlesObj.getParticleData()
-        double* particleData = &particleDataNumpy[0,0]    
-        numpy.ndarray[numpy.double_t, ndim = 2] eAtParticlesNumpy = particlesObj.getEAtParticles()
-        double* eAtParticles = &eAtParticlesNumpy[0,0]
-
-    for ii in range(macroParticleCount):
-        particleData[nCoords*ii+2] += chargeDtOverMass*eAtParticles[2*ii]
-        particleData[nCoords*ii+3] += chargeDtOverMass*eAtParticles[2*ii+1]
-        
-        particleData[nCoords*ii] += dt*particleData[nCoords*ii+2]
-        particleData[nCoords*ii+1] += dt*particleData[nCoords*ii+3]
-
-    
-cpdef borisPushNonRel(particlesObj, double dt):
-
-    cdef: 
-        unsigned int ii  
-        unsigned int nCoords = particlesObj.getNCoords()                                                               
-        unsigned int macroParticleCount = particlesObj.getMacroParticleCount()                
-        double chargeDtOverMassHalf = 0.5*particlesObj.getParticleCharge()/particlesObj.getParticleMass()*dt      
-        double tSqSumPlOneInvTimTwo
-                                  
-        numpy.ndarray[numpy.double_t, ndim = 2] particleDataNumpy = particlesObj.getParticleData()
-        double* particleData = &particleDataNumpy[0,0]                                     
-        numpy.ndarray[numpy.double_t, ndim = 2] buff01 = particlesObj.getEAtParticles()      
-        double* eAtParticles = <double*> buff01.data                                    
-        numpy.ndarray[numpy.double_t] buff02 = particlesObj.getBAtParticles()
-        double* bAtParticles = <double*> buff02.data
-        double ts0,ts1,ts2,vs0,vs1,vs2
-    
-    for ii in range(macroParticleCount):
-        particleData[nCoords*ii+2] += chargeDtOverMassHalf*eAtParticles[2*ii]
-        particleData[nCoords*ii+3] += chargeDtOverMassHalf*eAtParticles[2*ii+1]
-        ts0 = chargeDtOverMassHalf*bAtParticles[0]
-        ts1 = chargeDtOverMassHalf*bAtParticles[1]
-        ts2 = chargeDtOverMassHalf*bAtParticles[2]
-        vs0 = particleData[nCoords*ii+2] + particleData[nCoords*ii+3]*ts2 - particleData[nCoords*ii+4]*ts1
-        vs1 = particleData[nCoords*ii+3] + particleData[nCoords*ii+4]*ts0 - particleData[nCoords*ii+2]*ts2
-        vs2 = particleData[nCoords*ii+4] + particleData[nCoords*ii+2]*ts1 - particleData[nCoords*ii+3]*ts0
-        tSqSumPlOneInvTimTwo = 2./(1. + ts0*ts0 + ts1*ts1 + ts2*ts2)
-        ts0 *= tSqSumPlOneInvTimTwo    
-        ts1 *= tSqSumPlOneInvTimTwo    
-        ts2 *= tSqSumPlOneInvTimTwo
-        particleData[nCoords*ii+2] += vs1*ts2 - vs2*ts1 + chargeDtOverMassHalf*eAtParticles[2*ii]
-        particleData[nCoords*ii+3] += vs2*ts0 - vs0*ts2 + chargeDtOverMassHalf*eAtParticles[2*ii+1]
-        particleData[nCoords*ii+4] += vs0*ts1 - vs1*ts0
-        
-        particleData[nCoords*ii] += dt*particleData[nCoords*ii+2]
-        particleData[nCoords*ii+1] += dt*particleData[nCoords*ii+3]
-
-
-cpdef addAndRemoveParticles(particlesObj, numpy.ndarray[numpy.double_t, ndim = 2] addParticleDataNumpy, numpy.ndarray[numpy.uint16_t] keepParticlesNumpy):
-
-    cdef: 
-        unsigned int nCoords = particlesObj.getNCoords()  
-        unsigned int keepParticleCount = numpy.sum(keepParticlesNumpy)
-        unsigned int addParticleCount = addParticleDataNumpy.shape[0]
-        unsigned int newParticleCount = keepParticleCount + addParticleCount
-        unsigned int ii = 0, jj = 0, ll = 0, kk, ind1, ind2
-        numpy.ndarray[numpy.double_t, ndim = 2] fullParticleDataNumpy = particlesObj.getFullParticleData()      
-        double* fullParticleData = &fullParticleDataNumpy[0,0]
-        unsigned int oldParticleCount = particlesObj.getMacroParticleCount()
-        unsigned int oldParticleDataLen = fullParticleDataNumpy.shape[0]
-        numpy.ndarray[numpy.double_t, ndim = 2] overwriteParticleDataNumpy
-        double *overwriteParticleData         
-        unsigned short *keepParticles = &keepParticlesNumpy[0]
-        double *addParticleData
-    
-    if addParticleCount == 0:
-        ll += oldParticleCount
-        while jj < newParticleCount:
-            if keepParticles[jj] == 0:
-                while True:
-                    ll -= 1
-                    if keepParticles[ll] == 1:
-                        break                 
-                ind1 = nCoords*jj
-                ind2 = nCoords*ll
-                for kk in range(nCoords):
-                    fullParticleData[ind1+kk] = fullParticleData[ind2+kk]
-                ii += 1
-            jj += 1
-        particlesObj.setMacroParticleCount(newParticleCount)  
-    else:   
-        addParticleData = &addParticleDataNumpy[0,0]
-        if newParticleCount <= oldParticleDataLen:
-            while ii < addParticleCount and jj < oldParticleCount:
-                if  keepParticles[jj] == 0:
-                    ind1 = nCoords*jj
-                    ind2 = nCoords*ii
-                    for kk in range(nCoords):
-                        fullParticleData[ind1+kk] = addParticleData[ind2+kk]
-                    ii += 1
-                jj += 1
-    
-            if ii == addParticleCount:
-                ii = jj - addParticleCount
-                while ii < keepParticleCount:
-                    if keepParticles[jj] == 1:
-                        ind1 = nCoords*(ii+addParticleCount)
-                        ind2 = nCoords*jj
-                        for kk in range(nCoords):
-                            fullParticleData[ind1+kk] = fullParticleData[ind2+kk]
-                        ii += 1          
-                    jj += 1         
-            elif jj == oldParticleCount:
-                while ii < addParticleCount:  
-                    ind1 = nCoords*jj
-                    ind2 = nCoords*ii
-                    for kk in range(nCoords):
-                        fullParticleData[ind1+kk] = addParticleData[ind2+kk]
-                    ii += 1
-                    jj += 1
-            particlesObj.setMacroParticleCount(newParticleCount)
-    
-        elif newParticleCount > oldParticleDataLen:
-            overwriteParticleDataNumpy = numpy.empty((newParticleCount*1.05,nCoords), dtype=numpy.double)
-            overwriteParticleData = &overwriteParticleDataNumpy[0,0]
-            while jj < keepParticleCount:
-                if keepParticles[ii] == 1:
-                    ind1 = nCoords*jj
-                    ind2 = nCoords*ii
-                    for kk in range(nCoords):
-                        overwriteParticleData[ind1+kk] = fullParticleData[ind2+kk]
-                    jj += 1 
-                ii += 1
-            
-            for ii in range(addParticleCount):
-                ind1 = nCoords*(keepParticleCount + ii)
-                ind2 = nCoords*ii
-                for kk in range(nCoords):
-                    overwriteParticleData[ind1+kk] = addParticleData[ind2+kk]    
-            particlesObj.setParticleData(overwriteParticleDataNumpy)
-            particlesObj.setMacroParticleCount(newParticleCount)
-    
-
 
 # Quicksort to sort particle data by a specified column.
-# Inspired by http://en.wikipedia.org/wiki/Qicksort
-# Sorts 2D numpy double array by specified column.
+# Inspired by http://en.wikipedia.org/wiki/Quicksort.
+# This is only faster than using e.g. numpy because
+# "sort whole matrix by one column" isn't implemented
+# in numpy (and one has to use indirect sorting). 
+# Otherwise I can't compete with the speed of
+# other implementations, but I really can't tell why.
+# Sorts in-place, so small memory overhead.
+# Random pivot element prevents worst-case runtimes.
+# Catches elements equal to pivot element. 
+cdef void _quicksortByColumn(double[:,:] array, int left, int right,
+                             unsigned int nColumns, unsigned int sortByColumn) nogil:
+    cdef:    
+        double pivotValue, temp
+        unsigned int pivotIndex, pivotNewIndexLeft, pivotNewIndexRight = left
+        unsigned int ii, jj   
+    if left<right:         
+        pivotIndex = left + randomGen.randi(right-left)
+        pivotValue = array[pivotIndex,sortByColumn]
+        for jj in range(nColumns):
+            temp = array[pivotIndex,jj]
+            array[pivotIndex,jj] = array[right,jj]
+            array[right,jj] = temp
+        for ii in range(left, right):
+            if array[ii,sortByColumn]<=pivotValue:
+                for jj in range(nColumns):
+                    temp = array[ii,jj]
+                    array[ii,jj] = array[pivotNewIndexRight,jj]
+                    array[pivotNewIndexRight,jj] = temp
+                pivotNewIndexRight += 1
+        for jj in range(nColumns):
+            temp = array[pivotNewIndexRight,jj]
+            array[pivotNewIndexRight,jj] = array[right,jj]
+            array[right,jj] = temp
+        pivotNewIndexLeft = pivotNewIndexRight
+        while pivotNewIndexLeft>left and array[pivotNewIndexLeft-1,sortByColumn]==pivotValue:
+            pivotNewIndexLeft-= 1
+        _quicksortByColumn(array, left, pivotNewIndexLeft - 1, nColumns, sortByColumn)
+        _quicksortByColumn(array, pivotNewIndexRight + 1, right, nColumns, sortByColumn)
 
-cdef void quicksortByColumn(numpy.ndarray[numpy.double_t, ndim=2] numpyArray, unsigned int sortByColumn):
-
-    _quicksortByColumn(&numpyArray[0,0], 0, numpyArray.shape[0]-1, numpyArray.shape[1], sortByColumn)
-        
-        
-cdef void _quicksortByColumn(double* array, int left, int right,
-                             unsigned int nColumns, unsigned int sortByColumn):
-
-    cdef:
-        int pivotIndex, pivotNewIndex
-        
-    if left<right:
-        pivotIndex = (right+left)/2
-        pivotNewIndex = _partitionColumn(array, left, right, pivotIndex, nColumns, sortByColumn)
-        _quicksortByColumn(array, left, pivotNewIndex - 1, nColumns, sortByColumn)
-        _quicksortByColumn(array, pivotNewIndex + 1, right, nColumns, sortByColumn)
-
-
-cdef unsigned int _partitionColumn(double* array, int left, int right, int pivotIndex, 
-                                   unsigned int nColumns, unsigned int sortByColumn):
-
-    cdef:
-        double pivotValue
-        unsigned int storeIndex = left, ii
-        
-    pivotValue = array[nColumns*pivotIndex+sortByColumn]
-    _swap(&array[nColumns*pivotIndex], &array[nColumns*right], nColumns)
-    for ii in range(left, right):
-        if array[nColumns*ii+sortByColumn]<=pivotValue:
-            _swap(&array[nColumns*ii], &array[nColumns*storeIndex], nColumns)
-            storeIndex += 1
-    _swap(&array[nColumns*storeIndex], &array[nColumns*right], nColumns)
-    return storeIndex
-
-
-cdef inline void _swap(double* a, double* b, unsigned int nColumns):
-
-    cdef:
-        double temp
-        unsigned int ii
-        
-    for ii in range(nColumns):
-        temp = a[ii]
-        a[ii] = b[ii]
-        b[ii] = temp
  
    
 
