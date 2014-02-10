@@ -17,7 +17,7 @@ New Changes
 ---------
 
 - Added a better particle management method *localRandom*. It is based on the [particle management with the help of kd-trees](http://arxiv.org/abs/1301.1552) (see example03).
-- Added arbitrary magnetic fields in the *magneticFields* module (see example04 as well).
+- Added arbitrary magnetic fields in the *magneticFields* module (see example04).
 
 
 Module Descriptions
