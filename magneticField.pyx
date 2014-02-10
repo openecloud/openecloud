@@ -25,18 +25,20 @@ cpdef numpy.ndarray multipoleExpansion(grid.Grid gridObj, multipolesIn, skewMult
         unsigned int ii, jj, kk, currentInd
         double[:] multipoles = numpy.asarray(multipolesIn, dtype=numpy.double)
         unsigned int nMultipoles = multipoles.shape[0]
-        double[:] skewMultipoles = numpy.zeros(nMultipoles, dtype=numpy.double)
+        double[:] skewMultipoles = numpy.asarray(skewMultipolesIn, dtype=numpy.double)
         unsigned int nSkewMultipoles = skewMultipoles.shape[0]
         double[:] xMesh = gridObj.getXMesh()
         double[:] yMesh = gridObj.getYMesh()
         unsigned int nx = gridObj.getNx()
         unsigned int ny = gridObj.getNy()
         unsigned int np = gridObj.getNp()
-        double[:] bAtGridPoints = numpy.empty(2*np, dtype=numpy.double)
+        double[:] bAtGridPoints = numpy.empty(3*np, dtype=numpy.double)
         double r, phi, br, bphi
     
-    for ii in range(min(nMultipoles,nSkewMultipoles)):
-        skewMultipoles[ii] = skewMultipolesIn[ii]
+    if nSkewMultipoles<nMultipoles:
+        skewMultipoles = numpy.zeros(nMultipoles, dtype=numpy.double)
+        for ii in range(nSkewMultipoles):
+            skewMultipoles[ii] = skewMultipolesIn[ii]
     
     # Loops probably could be done more efficiently, but this suffices for one call for a simulation run.    
     for ii in range(nx):
@@ -53,5 +55,6 @@ cpdef numpy.ndarray multipoleExpansion(grid.Grid gridObj, multipolesIn, skewMult
             currentInd = ii+jj*nx    
             bAtGridPoints[currentInd] = br*cos(phi) - bphi*sin(phi)
             bAtGridPoints[currentInd+np] = br*sin(phi) + bphi*cos(phi)
+            bAtGridPoints[currentInd+2*np] = 0.
     return numpy.asarray(bAtGridPoints)
     

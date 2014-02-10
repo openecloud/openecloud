@@ -50,7 +50,8 @@ cdef class Particles:
         self.weightUpXLowY = numpy.empty(self.macroParticleCount, dtype=numpy.double)
         self.weightLowXUpY = numpy.empty(self.macroParticleCount, dtype=numpy.double)
         self.weightUpXUpY = numpy.empty(self.macroParticleCount, dtype=numpy.double)
-        self.eAtParticles = numpy.empty((self.macroParticleCount,2), dtype=numpy.double) 
+        self.eAtParticles = numpy.empty((self.macroParticleCount,2), dtype=numpy.double)
+        self.bAtParticles = numpy.empty((self.macroParticleCount,3), dtype=numpy.double) 
         self.isInside = numpy.empty(self.macroParticleCount, dtype=numpy.ushort) 
 
     cpdef numpy.ndarray getParticleData(Particles self):
@@ -133,10 +134,10 @@ cdef class Particles:
                           gridObj.getNp(), self.macroParticleCount)
     
     cpdef object bFieldToParticles(Particles self, grid.Grid gridObj, double[:] bAtGridPoints):
-        _fieldToParticles(&bAtGridPoints[0], &self.bAtParticles[0,0], &self.inCell[0], 
-                          &self.weightLowXLowY[0], &self.weightUpXLowY[0],
-                          &self.weightLowXUpY[0], &self.weightUpXUpY[0], 
-                          gridObj.getNx(), gridObj.getNp(), self.macroParticleCount)
+        _fieldToParticles3Dims(&bAtGridPoints[0], &self.bAtParticles[0,0], &self.inCell[0], 
+                               &self.weightLowXLowY[0], &self.weightUpXLowY[0],
+                               &self.weightLowXUpY[0], &self.weightUpXUpY[0], 
+                               gridObj.getNx(), gridObj.getNp(), self.macroParticleCount)
  
     cpdef object chargeToGrid(Particles self, grid.Grid gridObj):
         cdef:
@@ -271,7 +272,7 @@ cdef void _borisPush(double* particleData, double* eAtParticles, double* bAtPart
     for ii in range(macroParticleCount):
         particleData[nCoords*ii+2] += chargeDtOverMassHalf*eAtParticles[2*ii]
         particleData[nCoords*ii+3] += chargeDtOverMassHalf*eAtParticles[2*ii+1]        
-        ts0 = chargeDtOverMassHalf*bAtParticles[ii*3+0] 
+        ts0 = chargeDtOverMassHalf*bAtParticles[ii*3] 
         ts1 = chargeDtOverMassHalf*bAtParticles[ii*3+1] 
         ts2 = chargeDtOverMassHalf*bAtParticles[ii*3+2] 
         vs0 = particleData[nCoords*ii+2] + particleData[nCoords*ii+3]*ts2 - particleData[nCoords*ii+4]*ts1
@@ -364,6 +365,31 @@ cdef void _fieldToParticles(double* fieldAtGridPoints, double* fieldAtParticles,
         fieldAtParticles[2*ii] += weightUpXUpY[ii]*fieldAtGridPoints[ind]
         fieldAtParticles[2*ii+1] += weightUpXUpY[ii]*fieldAtGridPoints[ind+np]
 
+
+cdef void _fieldToParticles3Dims(double* fieldAtGridPoints, double* fieldAtParticles, unsigned int* inCell, 
+                                 double* weightLowXLowY, double* weightUpXLowY,
+                                 double* weightLowXUpY, double* weightUpXUpY, unsigned int nx, 
+                                 unsigned int np, unsigned int macroParticleCount) nogil:                  
+    cdef: 
+        unsigned int ind, ii    
+    for ii in range(macroParticleCount):
+        ind = inCell[ii]
+        fieldAtParticles[3*ii] = weightLowXLowY[ii]*fieldAtGridPoints[ind]          # First one has to set (=, not +=),  
+        fieldAtParticles[3*ii+1] = weightLowXLowY[ii]*fieldAtGridPoints[ind+np]     # so values are overwritten.
+        fieldAtParticles[3*ii+2] = weightLowXLowY[ii]*fieldAtGridPoints[ind+2*np]
+        ind = ind + 1
+        fieldAtParticles[3*ii] += weightUpXLowY[ii]*fieldAtGridPoints[ind]
+        fieldAtParticles[3*ii+1] += weightUpXLowY[ii]*fieldAtGridPoints[ind+np]
+        fieldAtParticles[3*ii+2] += weightUpXLowY[ii]*fieldAtGridPoints[ind+2*np]
+        ind = ind - 1 + nx
+        fieldAtParticles[3*ii] += weightLowXUpY[ii]*fieldAtGridPoints[ind]
+        fieldAtParticles[3*ii+1] += weightLowXUpY[ii]*fieldAtGridPoints[ind+np]
+        fieldAtParticles[3*ii+2] += weightLowXUpY[ii]*fieldAtGridPoints[ind+2*np]
+        ind = ind + 1
+        fieldAtParticles[3*ii] += weightUpXUpY[ii]*fieldAtGridPoints[ind]
+        fieldAtParticles[3*ii+1] += weightUpXUpY[ii]*fieldAtGridPoints[ind+np]
+        fieldAtParticles[3*ii+2] += weightUpXUpY[ii]*fieldAtGridPoints[ind+2*np]
+        
         
 cdef void _calcGridWeights(double* particleData, unsigned int* inCell, double* weightLowXLowY, double* weightUpXLowY,
                            double* weightLowXUpY, double* weightUpXUpY, double dxi, double dyi, double lxHalf, double lyHalf, 
