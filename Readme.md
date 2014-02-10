@@ -121,4 +121,5 @@ In this section some thoughts on future developments and plans are given. We wou
 1. Arbitrary boundaries/beam pipes. The main challenge is the boundary interaction of particles. The boundary can be modeled with linear or [higher order splines](http://www.particleincell.com/blog/2013/cubic-line-intersection/).
 2. Include the generation of seed electrons by residual gas ionization, synchrotron radiation and beam losses. The problem here is that it is hard to do general models which are more than usable for just one specific scenario.
 3. The coupling to PyORBIT already exists, but in a rather simple and unflexible form. The goal is to have several different coupling possiblities, e.g. up to a self-consistant one.
+4. Already existing but not but in a publically usable form is the calculation of microwave transmission. This can be done with rather easy models and on-the-fly during buildup simulations.
 
