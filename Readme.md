@@ -13,6 +13,13 @@ Quick Start
 3. Run the setup.py (under Linux in the command line: python setup.py build_ext --inplace).
 4. Run example01.py (under Linux in the command line: python example01.py).
 
+New Changes
+---------
+
+- Added a better particle management method *localRandom*. It is based on the [particle management with the help of kd-trees](http://arxiv.org/abs/1301.1552) (see example03).
+- Added arbitrary magnetic fields in the *magneticFields* module (see example04 as well).
+
+
 Module Descriptions
 ---------
 
@@ -55,6 +62,10 @@ Wraps several special functions of the GSL mainly needed by the *particleEmitter
 
 Wraps some random number generation of the GSL.
 
+### magneticField
+
+Currently only provides a method to calculate an arbitrary magnetic field. There was no other suitable module to include this.
+
 ### constants
 
 Module to store and provide global constants.
@@ -81,7 +92,7 @@ Only GSL and GCC are the standard repository versions of Ubuntu 12.04. Otherwise
 
 Short reasoning for the packages:
 
-- Numpy with its C-bindings for Cython and its ndarrays are used as data storage and interface between classes. This is intended for easy data handling from/with Python and to use the convenient garbage collection for the arrays. Within the classes/functions typed memoryviews are used for performance.
+- Numpy with its C-bindings for Cython and its ndarrays are used as data storage and interface between classes. This is intended for easy data handling from/with Python and to use the convenient garbage collection for the arrays. Within the classes/functions typed memoryviews or raw C pointers are used for performance.
 - Scipy is used for some exotic functions, but is increasingly replaced by Cython/C-functions or libraries for better performance. It is desirable to replace most or all Scipy dependencies in the future.
 - For random number generation the Mersenne-Twister of the GSL is used and some special functions. 
 - Matplotlib is mainly used in the examples for graphical output. It is highly recommended but isn't stricly necessary for running the code.
@@ -107,7 +118,5 @@ Outlook
 
 In this section some thoughts on future developments and plans are given. We would gladly accept any input from the community.
 
-1. Arbitrary magnetic fields, e.g. quadrupolar or solenoidal fields.
-2. Include the generation of seed electrons by residual gas ionization, synchrotron radiation and beam losses. This most likely requires better particle managment routines as stated below.
-3. Arbitrary boundaries/beam pipes. The main challenge is the boundary interaction of particles. The boundary can be modeled with linear or [higher order splines](http://www.particleincell.com/blog/2013/cubic-line-intersection/).
-4. Extent the particle management to better algorithms. One idea is the [particle management with the help of kd-trees](http://arxiv.org/abs/1301.1552), but implementing fast kd-tree methods appliable for the given data structure is quite time consuming and still ongoing.
+1. Include the generation of seed electrons by residual gas ionization, synchrotron radiation and beam losses. This most likely requires better particle managment routines as stated below.
+2. Arbitrary boundaries/beam pipes. The main challenge is the boundary interaction of particles. The boundary can be modeled with linear or [higher order splines](http://www.particleincell.com/blog/2013/cubic-line-intersection/).
