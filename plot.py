@@ -11,7 +11,13 @@ from scipy.constants import *
 
 def plotPotential(gridObj, poissonSolverObj, figObj = None, subPlot = None, show = False):
     phi = poissonSolverObj.getPhi()
-    ( [nx, ny], [lx, ly], [dx, dy] ) = gridObj.getGridBasics()  # @UnusedVariable
+    nx = gridObj.getNxExt()
+    ny = gridObj.getNyExt()
+    np = gridObj.getNpExt()
+    lx = gridObj.getLxExt()
+    ly = gridObj.getLyExt()  
+    dx = gridObj.getDx()
+    dy = gridObj.getDy()
 
     if figObj == None:
         figObj = mpl.figure()
@@ -35,7 +41,13 @@ def plotPotential(gridObj, poissonSolverObj, figObj = None, subPlot = None, show
 
 def plotMacroParticles(gridObj, particlesObj, figObj = None, subPlot = None, colorWeight = False, show = False):
     particleData = particlesObj.getParticleData()
-    ( [nx, ny], [lx, ly], [dx, dy] ) = gridObj.getGridBasics()  # @UnusedVariable
+    nx = gridObj.getNxExt()
+    ny = gridObj.getNyExt()
+    np = gridObj.getNpExt()
+    lx = gridObj.getLxExt()
+    ly = gridObj.getLyExt()  
+    dx = gridObj.getDx()
+    dy = gridObj.getDy()
 
     if figObj == None:
         figObj = mpl.figure()
@@ -62,8 +74,14 @@ def plotMacroParticles(gridObj, particlesObj, figObj = None, subPlot = None, col
     
 def plotChargeDensity(gridObj, particlesObj, figObj = None, subPlotObj = None, logScale = True, show = False):
 
-    ( [nx, ny], [lx, ly], [dx, dy] ) = gridObj.getGridBasics()  # @UnusedVariable
-    q = sp.reshape(particlesObj.getChargeOnGrid()*gridObj.getDati(),(ny,nx))
+    nx = gridObj.getNxExt()
+    ny = gridObj.getNyExt()
+    np = gridObj.getNpExt()
+    lx = gridObj.getLxExt()
+    ly = gridObj.getLyExt()  
+    dx = gridObj.getDx()
+    dy = gridObj.getDy()
+    q = sp.reshape(numpy.asarray(particlesObj.getChargeOnGrid())*numpy.asarray(gridObj.getDati()),(ny,nx))
     
     if figObj == None:
         figObj = mpl.figure()
@@ -92,7 +110,13 @@ def plotChargeDensity(gridObj, particlesObj, figObj = None, subPlotObj = None, l
     
 def plotMacroParticleDensity(gridObj, particlesObj, figObj = None, subPlot = None, logScale = True, show = False):
 
-    ( [nx, ny], [lx, ly], [dx, dy] ) = gridObj.getGridBasics()  # @UnusedVariable
+    nx = gridObj.getNxExt()
+    ny = gridObj.getNyExt()
+    np = gridObj.getNpExt()
+    lx = gridObj.getLxExt()
+    ly = gridObj.getLyExt()  
+    dx = gridObj.getDx()
+    dy = gridObj.getDy()
     macroParticleDensity = sp.reshape(sp.bincount(particlesObj.getInCell(), minlength = nx*ny),(ny,nx))[:-1,:-1]
     
     if figObj == None:
@@ -119,7 +143,13 @@ def plotMacroParticleDensity(gridObj, particlesObj, figObj = None, subPlot = Non
     
 def plotAllAtRuntime(gridObj, particlesObj, poissonSolverObj, particleCounts, macroCounts, currentStep, figObj = None):
 
-    ( [nx, ny], [lx, ly], [dx, dy] ) = gridObj.getGridBasics()  # @UnusedVariable
+    nx = gridObj.getNxExt()
+    ny = gridObj.getNyExt()
+    np = gridObj.getNpExt()
+    lx = gridObj.getLxExt()
+    ly = gridObj.getLyExt()  
+    dx = gridObj.getDx()
+    dy = gridObj.getDy()
     
     if figObj == None:
         figObj = mpl.figure()
@@ -139,7 +169,7 @@ def plotAllAtRuntime(gridObj, particlesObj, poissonSolverObj, particleCounts, ma
                             origin='lower', aspect=ly/lx, interpolation='nearest')
     macroDensityPlot.set_title('Macro Density')
     
-    q = sp.reshape(particlesObj.getChargeOnGrid()*gridObj.getDati(),(ny,nx))
+    q = sp.reshape(numpy.asarray(particlesObj.getChargeOnGrid())*numpy.asarray(gridObj.getDati()),(ny,nx))
     meanQ = sp.mean(q)
     chargeDensityPlot.imshow(sp.log10(q/meanQ+1), extent=extent, origin='lower', aspect=ly/lx)
     chargeDensityPlot.set_title('Charge Density')
@@ -213,7 +243,13 @@ def plotHeatLoad(heatLoad, dt, currentStep, figObj = None, subPlot = None, show 
         
 def plotEnergyLocal(gridObj, particlesObj, figObj = None, subPlot = None, show = False):
 
-    ( [nx, ny], [lx, ly], [dx, dy] ) = gridObj.getGridBasics()  # @UnusedVariable
+    nx = gridObj.getNxExt()
+    ny = gridObj.getNyExt()
+    np = gridObj.getNpExt()
+    lx = gridObj.getLxExt()
+    ly = gridObj.getLyExt()  
+    dx = gridObj.getDx()
+    dy = gridObj.getDy()
     inCell = particlesObj.getInCell()
     particleData = particlesObj.getParticleData()
     energies = 0.5*particlesObj.getParticleMass()/elementary_charge*(numpy.sum(particleData[:,2:5]**2, axis=1)*particleData[:,5])
@@ -246,3 +282,95 @@ def plotEnergyLocal(gridObj, particlesObj, figObj = None, subPlot = None, show =
     subPlot.set_xlim([-.5,.5])
     if show:
         mpl.show(block=False)
+        
+def plotMesh(gridObj):
+    nx = gridObj.getNxExt()
+    ny = gridObj.getNyExt()
+    np = gridObj.getNpExt()
+    lx = gridObj.getLxExt()
+    ly = gridObj.getLyExt()  
+    dx = gridObj.getDx()
+    dy = gridObj.getDy()
+    xMesh = gridObj.getXMesh()
+    yMesh = gridObj.getYMesh()
+    insideEdges = gridObj.getInsideEdges()
+    insidePoints = gridObj.getInsidePoints()
+    boundaryPoints = gridObj.getBoundaryPoints()
+    ds = gridObj.getDs()
+    x1 = []
+    y1 = []
+    x2 = []
+    y2 = []
+    x3 = []
+    y3 = []
+    x4 = []
+    y4 = []
+    for ii in range(nx):
+        for jj in range(ny):
+            if insideEdges[ii+jj*nx]==0:
+                x1.extend([xMesh[ii],xMesh[ii]+dx])
+                x1.append(None)
+                y1.extend([yMesh[jj],yMesh[jj]])
+                y1.append(None)    
+            elif insideEdges[ii+jj*nx]==2:
+                x2.extend([xMesh[ii],xMesh[ii]+dx])
+                x2.append(None)
+                y2.extend([yMesh[jj],yMesh[jj]])
+                y2.append(None)
+            elif insideEdges[ii+jj*nx]==1:
+                if insidePoints[ii+jj*nx]==1:
+                    x3.extend([xMesh[ii],xMesh[ii]+ds[ii+jj*nx]])
+                    x3.append(None)
+                    y3.extend([yMesh[jj],yMesh[jj]])
+                    y3.append(None)
+                    x4.extend([xMesh[ii]+ds[ii+jj*nx],xMesh[ii]+dx])
+                    x4.append(None)
+                    y4.extend([yMesh[jj],yMesh[jj]])
+                    y4.append(None)
+                else:
+                    x3.extend([xMesh[ii+1]-ds[ii+jj*nx],xMesh[ii+1]])
+                    x3.append(None)
+                    y3.extend([yMesh[jj],yMesh[jj]])
+                    y3.append(None)
+                    x4.extend([xMesh[ii],xMesh[ii+1]-ds[ii+jj*nx]])
+                    x4.append(None)
+                    y4.extend([yMesh[jj],yMesh[jj]])
+                    y4.append(None)
+            if insideEdges[ii+jj*nx+np]==0:
+                x1.extend([xMesh[ii],xMesh[ii]])
+                x1.append(None)
+                y1.extend([yMesh[jj],yMesh[jj]+dy])
+                y1.append(None)   
+            elif insideEdges[ii+jj*nx+np]==2:
+                x2.extend([xMesh[ii],xMesh[ii]])
+                x2.append(None)
+                y2.extend([yMesh[jj],yMesh[jj]+dy])
+                y2.append(None)
+            elif insideEdges[ii+jj*nx+np]==1:
+                if insidePoints[ii+jj*nx]==1:
+                    x3.extend([xMesh[ii],xMesh[ii]])
+                    x3.append(None)
+                    y3.extend([yMesh[jj],yMesh[jj]+ds[ii+jj*nx+np]])
+                    y3.append(None)
+                    x4.extend([xMesh[ii],xMesh[ii]])
+                    x4.append(None)
+                    y4.extend([yMesh[jj]+ds[ii+jj*nx+np],yMesh[jj+1]])
+                    y4.append(None)
+                else:
+                    x3.extend([xMesh[ii],xMesh[ii]])
+                    x3.append(None)
+                    y3.extend([yMesh[jj+1]-ds[ii+jj*nx+np],yMesh[jj+1]])
+                    y3.append(None)
+                    x4.extend([xMesh[ii],xMesh[ii]])
+                    x4.append(None)
+                    y4.extend([yMesh[jj+1]-ds[ii+jj*nx+np],yMesh[jj]])
+                    y4.append(None) 
+    
+    mpl.plot(x1,y1,'y:')
+    mpl.plot(x2,y2,'k')                
+    mpl.plot(x3,y3,'r')
+    mpl.plot(x4,y4,'g:')
+    mpl.plot(boundaryPoints[:,0],boundaryPoints[:,1], 'b--')
+    mpl.plot([boundaryPoints[0,0],boundaryPoints[-1,0]],[boundaryPoints[0,1],boundaryPoints[-1,1]], 'b--')   
+    mpl.xlim([-lx/2.,lx/2.]) 
+    mpl.ylim([-ly/2.,ly/2.])             

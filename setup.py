@@ -8,9 +8,9 @@ include_dirs = [numpy.get_include()]
 library_dirs = []
 include_dirs.append("/usr/local/include/")
 library_dirs.append("/usr/local/lib/")
-extra_compile_args = ["-O3"]                            # Use high degree of compiler optimization.
-ecaGSL = ["-O3", "-lgsl", "-lgslcblas"]                 # Some modules use GSL.
-elaGSL = ["-lgsl", "-lgslcblas"]
+extra_compile_args = ["-O3"]                               # Use high degree of compiler optimization.
+ecaGSL = ["-O3", "-lgsl", "-lcblas"]                       # Some modules use GSL.
+elaGSL = ["-lgsl", "-lcblas"]
 
 setup(
       cmdclass = {'build_ext': build_ext},
@@ -22,6 +22,9 @@ setup(
 	                           include_dirs=include_dirs,
                                extra_compile_args=extra_compile_args),
       			     Extension("particles", ["particles.pyx"],
+      				           include_dirs=include_dirs,
+                               extra_compile_args=extra_compile_args),
+                     Extension("poissonSolver", ["poissonSolver.pyx"],
       				           include_dirs=include_dirs,
                                extra_compile_args=extra_compile_args),
       			     Extension("particleBoundary", ["particleBoundary.pyx"],
@@ -47,6 +50,24 @@ setup(
                                extra_link_args=elaGSL,
                                extra_compile_args=ecaGSL),
                      Extension("constants", ["constants.pyx"],
-                               include_dirs=include_dirs)
+                               include_dirs=include_dirs),
+                     Extension("util", ["util.pyx"],
+                               include_dirs=include_dirs,
+                               extra_compile_args=extra_compile_args)
 			        ]
 )
+
+
+
+logoArt = """
+                         ______ _____ _      ____  _    _ _____  
+                        |  ____/ ____| |    / __ \| |  | |  __ \ 
+   ___  _ __   ___ _ __ | |__ | |    | |   | |  | | |  | | |  | |
+  / _ \| '_ \ / _ \ '_ \|  __|| |    | |   | |  | | |  | | |  | |
+ | (_) | |_) |  __/ | | | |___| |____| |___| |__| | |__| | |__| |
+  \___/| .__/ \___|_| |_|______\_____|______\____/ \____/|_____/ 
+       | |                                                       
+       |_|                                                       
+                                                                 
+"""
+print logoArt

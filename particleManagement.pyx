@@ -35,30 +35,36 @@ cdef extern from "math.h":
 cpdef globalRandom(grid.Grid gridObj, particles.Particles particlesObj, unsigned int targetMacroParticleCount):
 
     cdef: 
-        unsigned int ii
+        unsigned int ii, jj
         unsigned int macroParticleCount = particlesObj.getMacroParticleCount()
         unsigned int nCoords = particlesObj.getNCoords()
         int diffParticleCount = (<int> macroParticleCount) - (<int> targetMacroParticleCount)
         double factorWeight = (<double> macroParticleCount)/(<double> targetMacroParticleCount)     
-        unsigned int keepParticlesInd = randomGen.randi(macroParticleCount)
+        unsigned int randInd = randomGen.randi(macroParticleCount)
         
         unsigned short[:] keepParticles = numpy.ones(macroParticleCount, dtype=numpy.ushort)
         double[:,:] particleData = particlesObj.getParticleData()
+        double[:,:] addParticleData
     
-    if diffParticleCount>0:
+    if diffParticleCount > 0:
         for ii in range(macroParticleCount):
             particleData[ii,5] *= factorWeight
         for ii in range(diffParticleCount):
-            while keepParticles[keepParticlesInd] == 0:
-                keepParticlesInd = randomGen.randi(macroParticleCount)
-            keepParticles[keepParticlesInd] = 0
+            while keepParticles[randInd] == 0:
+                randInd = randomGen.randi(macroParticleCount)
+            keepParticles[randInd] = 0
       
         particlesObj.addAndRemoveParticles(numpy.zeros((0,6), dtype=numpy.double), keepParticles)
     
-    elif targetMacroParticleCount*0.5>macroParticleCount*1.:   
+    elif targetMacroParticleCount > macroParticleCount:   
+        addParticleData = numpy.empty((-diffParticleCount,nCoords), dtype=numpy.double)
         for ii in range(macroParticleCount):
-            particleData[ii,5] *= .5
-        particlesObj.addAndRemoveParticles(particleData, numpy.ones((macroParticleCount), dtype=numpy.ushort))
+            particleData[ii,5] *= factorWeight
+        for ii in range(-diffParticleCount):
+            randInd = randomGen.randi(macroParticleCount)
+            for jj in range(nCoords):
+                addParticleData[ii,jj] = particleData[randInd,jj]
+        particlesObj.addAndRemoveParticles(addParticleData, numpy.ones((macroParticleCount), dtype=numpy.ushort))
             
 
 # Uses kdTree to merge nearest neighbor (full phase space) particles, thus locally
@@ -67,7 +73,8 @@ cpdef globalRandom(grid.Grid gridObj, particles.Particles particlesObj, unsigned
 # This method aims for globally similar weight particles.
 cpdef localRandom(grid.Grid gridObj, particles.Particles particlesObj, particleBoundaryObj, 
                   unsigned int targetMacroParticleCount, double[:] phaseSpaceWeights = numpy.empty(0, dtype=numpy.double),
-                  double thresholdFactor = 2., double lambdavFactor = 2.e-3, double factorDisLimit = 2.):
+                  double thresholdFactor = 2., double lambdavFactor = 1., double factorDisLimit = 1.,
+                  unsigned int mergeScheme = 0):
     cdef:
         unsigned int ii, jj
         unsigned int macroParticleCount = particlesObj.getMacroParticleCount()
@@ -87,8 +94,9 @@ cpdef localRandom(grid.Grid gridObj, particles.Particles particlesObj, particleB
         double dxi = 1./gridObj.getDx(), dyi = 1./gridObj.getDy(), ds = min(gridObj.getDx(), gridObj.getDy())
         double lxHalf = gridObj.getLx()*0.5, lyHalf = gridObj.getLy()*0.5
         unsigned int inCellCoordsNormX, inCellCoordsNormY, foundInd
-        double vTypical = 0.
+        double vTypical = 0., factorVScale
         kdTree.KDTree tree
+        
     # Sort particles by weight.
     particlesObj.sortByColumn(5)
     
@@ -115,16 +123,16 @@ cpdef localRandom(grid.Grid gridObj, particles.Particles particlesObj, particleB
     
     # Calculate typical velocity for later before modifying particle data.
     for ii in range(macroParticleCount):
-        vTypical+= (particleData[ii,2]**2+particleData[ii,3]**2+particleData[ii,4]**2)*particleData[ii,5]**2
+        vTypical += (particleData[ii,2]**2+particleData[ii,3]**2+particleData[ii,4]**2)*particleData[ii,5]**2
     vTypical = sqrt(vTypical)/(macroParticleCount*meanWeight)
-    vTypical = max(vTypical,1.e-5*c)    # Lower limit to prevent unrealistic weighting of velocity
-
+    vTypical = max(vTypical,1.e-12*c)    # Lower limit to prevent unrealistic weighting of velocity
+    
     # Split particles.
     # Lapenta-like split, but with equal weights of splitted particles.
     addParticleData = numpy.empty((toSplitCount,nCoords), dtype=numpy.double)
     jj = 0
     for ii in range(macroParticleCount-toSplitCount,macroParticleCount):
-        particleData[ii,5]*= 0.5
+        particleData[ii,5] *= 0.5
         addParticleData[jj,2] = particleData[ii,2]
         addParticleData[jj,3] = particleData[ii,3] 
         addParticleData[jj,4] = particleData[ii,4]       
@@ -143,7 +151,8 @@ cpdef localRandom(grid.Grid gridObj, particles.Particles particlesObj, particleB
             randomTemp = randomGen.rand()*min(inCellCoordsNormY-0.5, 1.-inCellCoordsNormY)
         newCoords0[1] = inCellCoordsNormY+randomTemp
         newCoords1[1] = inCellCoordsNormY-randomTemp      
-        if particleBoundaryObj.isInside(newCoords0)==0 or particleBoundaryObj.isInside(newCoords1)==0:
+        if particleBoundaryObj.isInside(newCoords0[0],newCoords0[1])==0 or \
+           particleBoundaryObj.isInside(newCoords1[0],newCoords1[1])==0:
             addParticleData[jj,0] = particleData[ii,0]
             addParticleData[jj,1] = particleData[ii,1]
         else:
@@ -151,39 +160,80 @@ cpdef localRandom(grid.Grid gridObj, particles.Particles particlesObj, particleB
             particleData[ii,1] = newCoords0[1]
             addParticleData[jj,0] = newCoords1[0]
             addParticleData[jj,1] = newCoords1[1]
-        jj+= 1
+        jj += 1
         
     # Merge particles.
     if phaseSpaceWeights.shape[0]==0:
         phaseSpaceWeights = numpy.ones(nCoords-1, dtype=numpy.double)
-        lambdav = lambdavFactor*targetMacroParticleCount/macroParticleCount*ds/vTypical
-        phaseSpaceWeights[2]*= lambdav
-        phaseSpaceWeights[3]*= lambdav
-        phaseSpaceWeights[4]*= lambdav
+        lambdav = lambdavFactor*ds/vTypical
+        phaseSpaceWeights[2] *= lambdav
+        phaseSpaceWeights[3] *= lambdav
+        phaseSpaceWeights[4] *= lambdav
     tree = kdTree.KDTree(particleData[:macroParticleCount-toSplitCount,:5], weights=phaseSpaceWeights)
     ii = 0
     jj = 0
-    while jj<toMergeCount and ii<(macroParticleCount-toSplitCount-1):  
-        if keepParticles[ii]==0:
-            ii+= 1    
-        else: 
-            if tree.remove(ii)==1:
-                tree.query(particleData[ii,:5], &foundInd, &foundDist)
-                if foundDist<factorDisLimit*ds:
-                    if randomGen.rand()<particleData[ii,5]/(particleData[foundInd,5]+particleData[ii,5]):
-                        particleData[ii,5] += particleData[foundInd,5]
-                        keepParticles[foundInd] = 0
+    # All merge schemes take the position of the merged particle from one of the particles
+    # at random for now.
+    # Randomly take velocity of one of the particles.
+    if mergeScheme == 0:
+        while jj<toMergeCount and ii<(macroParticleCount-toSplitCount-1):
+            if keepParticles[ii] == 0:
+                ii += 1    
+            else: 
+                if tree.remove(ii) == 1:
+                    tree.query(particleData[ii,:5], &foundInd, &foundDist)
+                    if foundDist < factorDisLimit*ds:              
+                        if randomGen.rand() < (particleData[ii,5]/(particleData[foundInd,5]+particleData[ii,5])):
+                            particleData[ii,5] += particleData[foundInd,5]
+                            keepParticles[foundInd] = 0
+                        else:
+                            particleData[foundInd,5] += particleData[ii,5]
+                            keepParticles[ii] = 0
+                        tree.remove(foundInd)
+                        ii += 1
+                        jj += 1
                     else:
-                        particleData[foundInd,5] += particleData[ii,5]
-                        keepParticles[ii] = 0
-                    tree.remove(foundInd)
-                    ii+= 1
-                    jj+= 1
+                        ii += 1
                 else:
-                    ii+= 1
-            else:
-                ii+= 1
-
+                    ii += 1
+    # Randomly take velocity of one of the particles but scale to conserve energy.
+    elif mergeScheme == 1:
+        while jj < toMergeCount and ii < (macroParticleCount-toSplitCount-1):
+            if keepParticles[ii] == 0:
+                ii += 1    
+            else: 
+                if tree.remove(ii) == 1:
+                    tree.query(particleData[ii,:5], &foundInd, &foundDist)
+                    if foundDist < factorDisLimit*ds:                                     
+                        if randomGen.rand() < (particleData[ii,5]/(particleData[foundInd,5]+particleData[ii,5])):     
+                            factorVScale = particleData[ii,5]/(particleData[foundInd,5]+particleData[ii,5]) + \
+                                           (particleData[foundInd,2]**2 + particleData[foundInd,3]**2 + 
+                                            particleData[foundInd,4]**2)/(particleData[ii,2]**2 + 
+                                            particleData[ii,3]**2 + particleData[ii,4]**2) * \
+                                            particleData[foundInd,5]/(particleData[foundInd,5]+particleData[ii,5])
+                            particleData[ii,2] *= factorVScale
+                            particleData[ii,3] *= factorVScale
+                            particleData[ii,4] *= factorVScale
+                            particleData[ii,5] += particleData[foundInd,5]
+                            keepParticles[foundInd] = 0
+                        else:
+                            factorVScale = particleData[foundInd,5]/(particleData[foundInd,5]+particleData[ii,5]) + \
+                                           (particleData[ii,2]**2 + particleData[ii,3]**2 + 
+                                            particleData[ii,4]**2)/(particleData[foundInd,2]**2 + 
+                                            particleData[foundInd,3]**2 + particleData[foundInd,4]**2) * \
+                                            particleData[ii,5]/(particleData[foundInd,5]+particleData[ii,5])
+                            particleData[foundInd,2] *= factorVScale
+                            particleData[foundInd,3] *= factorVScale
+                            particleData[foundInd,4] *= factorVScale
+                            particleData[foundInd,5] += particleData[ii,5]
+                            keepParticles[ii] = 0
+                        tree.remove(foundInd)
+                        ii += 1
+                        jj += 1
+                    else:
+                        ii += 1
+                else:
+                    ii += 1
     # Finally concatenate.
     particlesObj.addAndRemoveParticles(addParticleData, keepParticles)
 
@@ -202,7 +252,7 @@ cdef unsigned int _searchSorted(double[:] array, double value, unsigned int arra
         ind0 = 0
         ind2 = arrayLen-1
         ind1 = <unsigned int> ((ind2+ind0)*0.5)
-        while ind1!=ind0:
+        while ind1 != ind0:
             if array[ind1]>value:
                 ind2 = ind1
             else:
@@ -210,9 +260,3 @@ cdef unsigned int _searchSorted(double[:] array, double value, unsigned int arra
             ind1 = <unsigned int> ((ind2+ind0)*0.5)
         return ind1+1
         
-        
-        
-        
-        
-
-         

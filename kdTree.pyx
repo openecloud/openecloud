@@ -2,7 +2,6 @@
 #cython: wraparound=False
 #cython: boundscheck=False
 #cython: cdivision=True
-##cython: profile=True
 
 import numpy
 cimport numpy
@@ -62,12 +61,14 @@ cdef class KDTree:
         cdef:
             unsigned int success
         # First try if point is in node from last query.
-        success = _remove(self.lastQueryNode, removeInd, &self.data[0,0], self.nCoords, self.nCoordsData, &self.weights[0])
+        success = _remove(self.lastQueryNode, removeInd, &self.data[0,0], self.nCoords, 
+                          self.nCoordsData, &self.weights[0], &self.lastQueryNode)
         # Either point is in lastQueryNode but whole node has 
         # to be removed OR point isn't in lastQueryNode.
         # Start from root to remove point.
-        if success!=1:
-            success = _remove(self.root, removeInd, &self.data[0,0], self.nCoords, self.nCoordsData, &self.weights[0])
+        if success != 1:
+            success = _remove(self.root, removeInd, &self.data[0,0], self.nCoords, 
+                              self.nCoordsData, &self.weights[0], &self.lastQueryNode)
             # Some error. Point was not found in tree.
             if success==1:
                 self.nPoints-= 1
@@ -86,44 +87,48 @@ cdef class KDTree:
 # Returns 0 if nothing was removed.
 # Returns 1 if a node got successfully removed.
 # Returns 2 if a the node has to be set to NULL on the parent level.
-cdef unsigned int _remove(node* currentNode, unsigned int removeInd, double* data, 
-                          unsigned int nCoords, unsigned int nCoordsData, double* weights) nogil:
+cdef unsigned int _remove(node* currentNode, unsigned int removeInd, double* data, unsigned int nCoords, 
+                          unsigned int nCoordsData, double* weights, node** lastQueryNode) nogil:
     cdef:
         unsigned int ii, jj, success
         unsigned int* inds
         node* tempNode
     if currentNode is not NULL:
-        if currentNode.leaf>1:
+        if currentNode.leaf > 1:
             inds = currentNode.inds
             for ii in range(currentNode.leaf):
-                if inds[ii]==removeInd:
+                if inds[ii] == removeInd:
                     inds[ii] = inds[currentNode.leaf-1]
                     inds[currentNode.leaf-1] = removeInd
                     currentNode.leaf-= 1 
                     return 1
             return 0
-        elif currentNode.leaf==1:
-            if currentNode.inds[0]==removeInd:
+        elif currentNode.leaf == 1:
+            if currentNode.inds[0] == removeInd:
                 return 2
             else:
                 return 0
-        elif currentNode.leaf==0:
-            if data[removeInd*nCoordsData+currentNode.axis]<currentNode.location:
-                success = _remove(currentNode.leftChild, removeInd, data, nCoords, nCoordsData, weights)
-                if success==2:
+        elif currentNode.leaf == 0:
+            if data[removeInd*nCoordsData+currentNode.axis]*weights[currentNode.axis] < currentNode.location:
+                success = _remove(currentNode.leftChild, removeInd, data, nCoords, nCoordsData, weights, lastQueryNode)
+                if success == 2:
+                    if lastQueryNode[0] == currentNode.leftChild:
+                        lastQueryNode[0] = currentNode
                     free(currentNode.leftChild)
                     currentNode.leftChild = <node*> NULL
                     return 1
-                elif success==1:
-                    return 1
+                else:
+                    return success
             else:
-                success = _remove(currentNode.rightChild, removeInd, data, nCoords, nCoordsData, weights)
-                if success==2:
+                success = _remove(currentNode.rightChild, removeInd, data, nCoords, nCoordsData, weights, lastQueryNode)
+                if success == 2:
+                    if lastQueryNode[0] == currentNode.rightChild:
+                        lastQueryNode[0] = currentNode
                     free(currentNode.rightChild)
                     currentNode.rightChild = <node*> NULL
                     return 1
-                elif success==1:
-                    return 1
+                else:
+                    return success
     else:
         return 0
 
@@ -228,23 +233,23 @@ cdef void _query(double* data, node* currentNode, double* point, double* distanc
     
     if currentNode is NULL:
         pass
-    elif currentNode.leaf!=0:
+    elif currentNode.leaf != 0:
         inds = currentNode.inds
         for ii in range(currentNode.leaf):
             testDistance = 0.
             for jj in range(nCoords):
-                testDistance += (data[inds[ii]*nCoordsData+jj]*weights[jj]-point[jj])**2
-            if testDistance<distanceBest[0]:
+                testDistance += (data[inds[ii]*nCoordsData+jj]*weights[jj] - point[jj])**2
+            if testDistance < distanceBest[0]:
                 indBest[0] = inds[ii]
                 distanceBest[0] = testDistance
                 foundNode[0] = currentNode
     else:
-        if point[currentNode.axis]<currentNode.location:
+        if point[currentNode.axis] < currentNode.location:
             _query(data, currentNode.leftChild, point, distanceBest, indBest, nCoords, foundNode, nCoordsData, weights)
         else:
             _query(data, currentNode.rightChild, point, distanceBest, indBest, nCoords, foundNode, nCoordsData, weights)
-        if (point[currentNode.axis]-currentNode.location)**2<distanceBest[0]:          
-            if point[currentNode.axis]<currentNode.location:
+        if (point[currentNode.axis] - currentNode.location)**2 < distanceBest[0]:          
+            if point[currentNode.axis] < currentNode.location:
                 _query(data, currentNode.rightChild, point, distanceBest, indBest, nCoords, foundNode, nCoordsData, weights)
             else:
                 _query(data, currentNode.leftChild, point, distanceBest, indBest, nCoords, foundNode, nCoordsData, weights)      

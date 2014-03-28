@@ -29,9 +29,9 @@ cpdef numpy.ndarray multipoleExpansion(grid.Grid gridObj, multipolesIn, skewMult
         unsigned int nSkewMultipoles = skewMultipoles.shape[0]
         double[:] xMesh = gridObj.getXMesh()
         double[:] yMesh = gridObj.getYMesh()
-        unsigned int nx = gridObj.getNx()
-        unsigned int ny = gridObj.getNy()
-        unsigned int np = gridObj.getNp()
+        unsigned int nx = gridObj.getNxExt()
+        unsigned int ny = gridObj.getNyExt()
+        unsigned int np = gridObj.getNpExt()
         double[:] bAtGridPoints = numpy.empty(3*np, dtype=numpy.double)
         double r, phi, br, bphi
     

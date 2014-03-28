@@ -15,8 +15,13 @@ class LHCBeam:
     def __init__(self, gridObj, dt, nParticles=1.e11, tBunchSpacing=25.e-9):
         
         self.gridObj = gridObj
-        ( [self.nx, self.ny], [self.lx, self.ly], [self.dx, self.dy] ) = gridObj.getGridBasics()
-        self.np = self.nx*self.ny
+        self.nx = gridObj.getNxExt()
+        self.ny = gridObj.getNyExt()
+        self.np = gridObj.getNpExt()
+        self.lx = gridObj.getLxExt()
+        self.ly = gridObj.getLyExt()  
+        self.dx = gridObj.getDx()
+        self.dy = gridObj.getDy()
         self.dt = dt
         
         self.nParticles = nParticles
@@ -69,7 +74,7 @@ class LHCBeam:
         if conditions:
             tRed = sp.mod(sp.mod(t,self.tRevolution),self.tBunchSpacing)
             temp = sps.norm.cdf(sp.clip((tRed+self.dt/2.)/self.tBunchLengthSigma-self.bunchLengthLimitSigma,-self.bunchLengthLimitSigma,self.bunchLengthLimitSigma))-sps.norm.cdf(sp.clip((tRed-self.dt/2.)/self.tBunchLengthSigma-self.bunchLengthLimitSigma,-self.bunchLengthLimitSigma,self.bunchLengthLimitSigma))              
-            return temp*self.nParticles/self.dt/self.beamVelocity*self.charge*self.qTransversalProfile   #*self.dt/self.beamVelocity/self.dx/self.dy*self.nParticles*self.charge*self.qTransversalProfile    
+            return temp*self.nParticles/self.dt/self.beamVelocity*self.charge*self.qTransversalProfile
         else:
             return 0
         
@@ -78,8 +83,13 @@ class LHCBeamEndless:
     def __init__(self, gridObj, dt, nParticles=1.e11, tBunchSpacing=25.e-9):
         
         self.gridObj = gridObj
-        ( [self.nx, self.ny], [self.lx, self.ly], [self.dx, self.dy] ) = gridObj.getGridBasics()
-        self.np = self.nx*self.ny
+        self.nx = gridObj.getNxExt()
+        self.ny = gridObj.getNyExt()
+        self.np = gridObj.getNpExt()
+        self.lx = gridObj.getLxExt()
+        self.ly = gridObj.getLyExt()  
+        self.dx = gridObj.getDx()
+        self.dy = gridObj.getDy()
         self.dt = dt
         
         self.nParticles = nParticles

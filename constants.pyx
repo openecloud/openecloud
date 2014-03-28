@@ -5,6 +5,7 @@ cdef:
     double elementary_charge = 1.602176565e-19
     double m_e = 9.10938291e-31
     double m_p = 1.672621777e-27
+    double epsilon_0 = 8.85418781762e-12
     double pi = 3.141592653589793
     double machineEpsilon = sys.float_info.epsilon
     double doubleMaxVal = sys.float_info.max

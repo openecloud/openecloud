@@ -1,5 +1,8 @@
 '''
-This example is based on example01, but with better particle management.
+This example is a low-resolution simulation of the electron cloud buildup in
+a LHC-like scenario. Dynamic graphical output is used to illustrate the
+development of the electron cloud and the behavior of the code. The graphical
+output takes a lot of time, so this is not recommended for normal use.
 '''
 
 # openecloud imports
@@ -39,10 +42,11 @@ secElecEmitObj = FurmanEmitter(particleBoundaryObj,particlesObj)    # Secondary 
 poissonSolverObj = PoissonSolver(gridObj)                           # Poisson solver for electric field calculation
 
 # Some setup
-homoLoader(gridObj, particlesObj, particleBoundaryObj, nParticles, weightInit)  # Loads a homogeneous particle distribution
-physicalParticleCount = numpy.zeros(nTimeSteps, dtype=numpy.uint0)              # History of physical particle count
-macroParticleCount = numpy.zeros(nTimeSteps, dtype=numpy.uint0)                 # History of macro particle count
-fig0 = mpl.figure(1,figsize=(13,12))                                            # Plot for dynamic graphical output
+homoLoader(gridObj, particlesObj, particleBoundaryObj, nParticles, weightInit)          # Loads a homogeneous particle distribution
+physicalParticleCount = numpy.zeros(nTimeSteps, dtype=numpy.uint0)                      # History of physical particle count
+macroParticleCount = numpy.zeros(nTimeSteps, dtype=numpy.uint0)                         # History of macro particle count
+particlesObj.setBConst(numpy.array([0.,0.1,0.]))
+fig0 = mpl.figure(1,figsize=(13,12))                                                    # Plot for dynamic graphical output
 mpl.show(block=False)
             
 # Main loop
@@ -52,20 +56,19 @@ for ii in range(nTimeSteps):
     
     physicalParticleCount[ii] = numpy.sum(particlesObj.getParticleData()[:,5]) # Calculate and save particle count 
     macroParticleCount[ii] = particlesObj.getMacroParticleCount()              # Save macro particle count
+    
+    # Particle management only if necessary and at the correct time step.
+    # This method (globalRandom) is done only rarely as it introduces noise. For better methods see other examples.
+    if ii > 0 and numpy.mod(ii,nTimeStepsPartMan) == 0 and \
+       (macroParticleCount[ii] > 1.05*nParticles or macroParticleCount[ii] < 0.95*nParticles):                   
+        particleManagement.globalRandom(gridObj, particlesObj, nParticles) 
 
-    # Particle management only if necessary and at the correct time step
-    if ii>0 and (macroParticleCount[ii] > nParticles*1.05 or macroParticleCount[ii] < nParticles*0.95) \
-            and numpy.mod(ii, nTimeStepsPartMan) == 0:                
-        particleManagement.localRandom(gridObj, particlesObj, particleBoundaryObj, nParticles)
-
-    # Callculate the grid weights of the particles and scatter the charge to the grid
+    # Calculate the grid weights of the particles and scatter the charge to the grid
     particlesObj.calcGridWeights(gridObj)    
     particlesObj.chargeToGrid(gridObj)       
 
     # Graphical output (Not recommended during runtime in general, because slow. Just for example.)
     if ii>0 and numpy.mod(ii, nAnimate) == 0:       
-        #plot.plotMacroParticles(gridObj, particlesObj, figObj = fig0)
-        #plot.plotParticleCount(physicalParticleCount, dt, ii, figObj = fig0)
         plot.plotAllAtRuntime(gridObj, particlesObj, poissonSolverObj, physicalParticleCount, 
                               macroParticleCount, ii, figObj = fig0)
         mpl.draw()
@@ -76,13 +79,13 @@ for ii in range(nTimeSteps):
         numpy.save('particleData.npy', particlesObj.getParticleData())
 
     # Solve Poisson problem with electron charge on grid and imprinted beam charge
-    poissonSolverObj.solve(numpy.asarray(particlesObj.getChargeOnGrid())+beamObj.getCharge(ii*dt))     
+    poissonSolverObj.solve(numpy.asarray(particlesObj.getChargeOnGrid())+numpy.asarray(beamObj.getCharge(ii*dt)))     
 
     # Interpolate electric field to particle position
     particlesObj.eFieldToParticles(gridObj, poissonSolverObj.getEAtGridPoints())
     
-    # Push particles without magnetic field. This function with flag '0' is faster than the general one.)
-    particlesObj.borisPush(dt, typeBField=0)
+    # Push particles (with constant magnetic field. This special function is faster than the general one.)
+    particlesObj.borisPush(dt, typeBField=1)
 
     # Check which particles are inside and absorb particles outside
     particleBoundaryObj.indexInside()    
@@ -91,7 +94,6 @@ for ii in range(nTimeSteps):
     # If particles were absorbed at the particle boundary do secondary emission
     if particleBoundaryObj.getAbsorbedMacroParticleCount() > 0:
         particleBoundaryObj.calculateInteractionPoint()
-        particleBoundaryObj.calculateNormalVectors()        
-        secondaries = secElecEmitObj.generateSecondaries()
-        particlesObj.addAndRemoveParticles(secondaries, particlesObj.getIsInside())
+        particleBoundaryObj.calculateNormalVectors()
+        particlesObj.addAndRemoveParticles(secElecEmitObj.generateSecondaries(), particlesObj.getIsInside())
        

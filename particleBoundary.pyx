@@ -6,6 +6,9 @@
 import numpy
 cimport numpy
 cimport cython
+cimport grid
+cimport particles
+from constants cimport *
 
 # Import some C methods.
 cdef extern from "math.h":
@@ -14,44 +17,42 @@ cdef extern from "math.h":
 
 
 cdef class ParticleBoundary:
-    
-    cdef:
-        object gridObj, particlesObj
-        unsigned int nx, ny, absorbedMacroParticleCount
-        double lx, ly, dx, dy
-        numpy.ndarray absorbedParticles, remainingTimeStep, normalVectors
 
-    def __init__(self, object gridObj, object particlesObj):
+    def __init__(ParticleBoundary self, grid.Grid gridObj, particles.Particles particlesObj):
         
         self.gridObj = gridObj
         self.particlesObj = particlesObj
-        ( [self.nx, self.ny], [self.lx, self.ly], [self.dx, self.dy] ) = gridObj.getGridBasics()
+        self.nx = gridObj.getNxExt()
+        self.ny = gridObj.getNyExt()
+        self.np = gridObj.getNpExt()
+        self.lx = gridObj.getLx()
+        self.ly = gridObj.getLy()  
+        self.dx = gridObj.getDx()
+        self.dy = gridObj.getDy()
         
         self.absorbedParticles = numpy.empty((1,particlesObj.getNCoords()), dtype=numpy.double)
         self.normalVectors = numpy.empty((1,2), dtype=numpy.double)
         self.remainingTimeStep = numpy.empty(1, dtype=numpy.double)
         self.absorbedMacroParticleCount = 0
         
-    cpdef saveAbsorbed(self):
+    cpdef object saveAbsorbed(ParticleBoundary self):
         cdef:
-            double[:,:] particleDataBuff = self.particlesObj.getParticleData()
-            double *particleData = &particleDataBuff[0,0]
+            double *particleData = &self.particlesObj.getFullParticleData()[0,0]
             unsigned int macroParticleCount = self.particlesObj.getMacroParticleCount()
             unsigned int nCoords = self.particlesObj.getNCoords()
-            unsigned int absorbedMacroParticleCount = macroParticleCount, ii, jj, kk, ind1, ind2
-            unsigned short[:] isInside = self.particlesObj.getIsInside()
-            double[:,:] absorbedParticlesBuff
+            unsigned int absorbedMacroParticleCount, ii, jj, kk, ind1, ind2
+            unsigned short* isInside = &self.particlesObj.getIsInside()[0]
             double *absorbedParticles
             
+        absorbedMacroParticleCount = macroParticleCount
         for ii in range(macroParticleCount):
             absorbedMacroParticleCount -= isInside[ii]
         
         if absorbedMacroParticleCount > self.absorbedParticles.shape[0]:
-            self.absorbedParticles = numpy.empty((absorbedMacroParticleCount, nCoords), dtype = numpy.double)
+            self.absorbedParticles = numpy.empty((<unsigned int> (absorbedMacroParticleCount*1.1), nCoords), dtype = numpy.double)
         self.absorbedMacroParticleCount = absorbedMacroParticleCount
         
-        absorbedParticlesBuff = self.absorbedParticles
-        absorbedParticles = &absorbedParticlesBuff[0,0]
+        absorbedParticles = &self.absorbedParticles[0,0]
         
         ii = 0; jj = 0;
         while ii < absorbedMacroParticleCount:
@@ -63,38 +64,31 @@ cdef class ParticleBoundary:
                 ii += 1
             jj += 1
             
-
-    cpdef getAbsorbedParticles(self):
+    cpdef double[:,:] getAbsorbedParticles(ParticleBoundary self):
         return self.absorbedParticles[:self.absorbedMacroParticleCount]
     
-    cpdef getAbsorbedMacroParticleCount(self):
+    cpdef unsigned int getAbsorbedMacroParticleCount(ParticleBoundary self):
         return self.absorbedMacroParticleCount   
     
-    cpdef getNormalVectors(self):
+    cpdef double[:,:] getNormalVectors(ParticleBoundary self):
         return self.normalVectors[:self.absorbedMacroParticleCount]   
     
         
 cdef class AbsorbRectangular(ParticleBoundary):
-    
-    cdef:
-        numpy.ndarray particleLeftWhere  
 
-    def __init__(self, object gridObj, object particlesObj):
+    def __init__(AbsorbRectangular self, grid.Grid gridObj, particles.Particles particlesObj):
         
         super().__init__(gridObj, particlesObj)
-        self.particleLeftWhere = numpy.empty(1, dtype=numpy.uint16)
-        
-                
-    cpdef indexInside(self):
+        self.particleLeftWhere = numpy.empty(1, dtype=numpy.ushort)
+                       
+    cpdef indexInside(AbsorbRectangular self):
         cdef:
-            double[:,:] particleDataBuff = self.particlesObj.getParticleData()
-            double *particleData = &particleDataBuff[0,0]
+            double* particleData = &self.particlesObj.getFullParticleData()[0,0]
             unsigned int macroParticleCount = self.particlesObj.getMacroParticleCount()
             unsigned int nCoords = self.particlesObj.getNCoords()
             double lxHalf = self.lx*0.5, lyHalf = self.ly*0.5
             unsigned int ii
-            unsigned short[:] isInsideBuff = self.particlesObj.getIsInside()
-            unsigned short *isInside = &isInsideBuff[0]
+            unsigned short* isInside = &self.particlesObj.getIsInside()[0]
         
         for ii in range(macroParticleCount):
             if (particleData[nCoords*ii]<-lxHalf or particleData[nCoords*ii]>lxHalf or
@@ -103,40 +97,35 @@ cdef class AbsorbRectangular(ParticleBoundary):
             else:
                 isInside[ii] = 1
                 
-    cpdef unsigned short isInside(self, double[:] point):
+    cpdef unsigned short isInside(AbsorbRectangular self, double x, double y):
         cdef:
             double lxHalf = self.lx*0.5, lyHalf = self.ly*0.5
-        if (point[0]<-lxHalf or point[0]>lxHalf or
-            point[1]<-lyHalf or point[1]>lyHalf):
+        if x<-lxHalf or x>lxHalf or y<-lyHalf or y>lyHalf:
             return 0
         else:
             return 1        
                 
-    cpdef calculateInteractionPoint(self):       
+    cpdef object calculateInteractionPoint(AbsorbRectangular self):       
         
         cdef:
-            double[:,:] absorbedParticlesBuff = self.absorbedParticles
-            double *absorbedParticles = &absorbedParticlesBuff[0,0]
+            double *absorbedParticles = &self.absorbedParticles[0,0]
             unsigned int absorbedMacroParticleCount = self.absorbedMacroParticleCount
             unsigned int nCoords = self.particlesObj.getNCoords()
-            double xIsInside, yIsInside, tempRemainingTimeStepX, tempRemainingTimeStepY
+            unsigned short xIsInside, yIsInside 
+            double tempRemainingTimeStepX, tempRemainingTimeStepY
             double epsFailsafe = 1e-6
             double lxHalf = self.lx*0.5-self.dx*epsFailsafe, lyHalf = self.ly*0.5-self.dy*epsFailsafe      
             unsigned int ii
-            double[:] remainingTimeStepNumpy
             double *remainingTimeStep
-            unsigned short[:] particleLeftWhereNumpy
             unsigned short *particleLeftWhere
         
         if self.remainingTimeStep.shape[0]<absorbedMacroParticleCount:    
-            self.remainingTimeStep = numpy.empty(absorbedMacroParticleCount, dtype=numpy.double)
+            self.remainingTimeStep = numpy.empty(<unsigned int> (absorbedMacroParticleCount*1.1), dtype=numpy.double)
         if self.particleLeftWhere.shape[0]<absorbedMacroParticleCount:
-            self.particleLeftWhere = numpy.empty(absorbedMacroParticleCount, dtype=numpy.uint16)
+            self.particleLeftWhere = numpy.empty(<unsigned int> (absorbedMacroParticleCount*1.1), dtype=numpy.ushort)
         
-        particleLeftWhereNumpy = self.particleLeftWhere
-        particleLeftWhere = &particleLeftWhereNumpy[0]
-        remainingTimeStepNumpy = self.remainingTimeStep
-        remainingTimeStep = &remainingTimeStepNumpy[0]
+        particleLeftWhere = &self.particleLeftWhere[0]
+        remainingTimeStep = &self.remainingTimeStep[0]
                     
         for ii in range(absorbedMacroParticleCount):
             xIsInside = 1
@@ -203,23 +192,19 @@ cdef class AbsorbRectangular(ParticleBoundary):
             absorbedParticles[nCoords*ii+1] -= remainingTimeStep[ii]*absorbedParticles[nCoords*ii+3]
 
 
-    cpdef calculateNormalVectors(self):       
+    cpdef object calculateNormalVectors(AbsorbRectangular self):       
         cdef:
-            numpy.ndarray[numpy.double_t, ndim=2] absorbedParticlesNumpy = self.absorbedParticles
-            double *absorbedParticles = &absorbedParticlesNumpy[0,0]
+            double *absorbedParticles = &self.absorbedParticles[0,0]
             unsigned int absorbedMacroParticleCount = self.absorbedMacroParticleCount
             unsigned int nCoords = self.particlesObj.getNCoords()
-            numpy.ndarray[numpy.uint16_t] particleLeftWhereNumpy = self.particleLeftWhere
-            unsigned short *particleLeftWhere = &particleLeftWhereNumpy[0]
+            unsigned short *particleLeftWhere = &self.particleLeftWhere[0]
             unsigned int ii
-            numpy.ndarray[numpy.double_t, ndim=2] normalVectorsNumpy
             double *normalVectors
         
         if self.normalVectors.shape[0]<absorbedMacroParticleCount:    
-            self.normalVectors = numpy.empty((absorbedMacroParticleCount,2), dtype=numpy.double)
+            self.normalVectors = numpy.empty((<unsigned int> (absorbedMacroParticleCount*1.1),2), dtype=numpy.double)
         
-        normalVectorsNumpy = self.normalVectors
-        normalVectors = &normalVectorsNumpy[0,0]
+        normalVectors = &self.normalVectors[0,0]
         
         for ii in range(absorbedMacroParticleCount):
             if particleLeftWhere[ii] == 0:
@@ -239,16 +224,15 @@ cdef class AbsorbRectangular(ParticleBoundary):
             
 cdef class AbsorbElliptical(ParticleBoundary):
      
-    cpdef indexInside(self):
+    cpdef object indexInside(AbsorbElliptical self):
  
         cdef:
-            double[:,:] particleDataBuff = self.particlesObj.getParticleData()
-            double *particleData = &particleDataBuff[0,0]
+            double *particleData = &self.particlesObj.getFullParticleData()[0,0]
             unsigned int macroParticleCount = self.particlesObj.getMacroParticleCount()
             unsigned int nCoords = self.particlesObj.getNCoords()            
             unsigned int ii
             double lxHalfSqInv = 4./(self.lx*self.lx), lyHalfSqInv = 4./(self.ly*self.ly)
-            unsigned short[:] isInside = self.particlesObj.getIsInside()
+            unsigned short *isInside = &self.particlesObj.getIsInside()[0]
          
         for ii in range(macroParticleCount):
             if (particleData[nCoords*ii]*particleData[nCoords*ii]*lxHalfSqInv + 
@@ -257,144 +241,244 @@ cdef class AbsorbElliptical(ParticleBoundary):
             else:
                 isInside[ii] = 1
         
-    cpdef unsigned short isInside(self, double[:] point):
+    cpdef unsigned short isInside(AbsorbElliptical self, double x, double y):
         cdef:
             double lxHalfSqInv = 4./self.lx**2, lyHalfSqInv = 4./self.ly**2
-        if (point[0]*point[0]*lxHalfSqInv + point[1]*point[1]*lyHalfSqInv) >= 1.:
+        if (x**2*lxHalfSqInv + y**2*lyHalfSqInv) >= 1.:
             return 0
         else:
             return 1 
                             
-    cpdef calculateInteractionPoint(self):   
+    cpdef object calculateInteractionPoint(AbsorbElliptical self):   
          
         cdef: 
-            double[:,:] absorbedParticlesBuff = self.absorbedParticles
-            double *absorbedParticles = &absorbedParticlesBuff[0,0]   
+            double *absorbedParticles = &self.absorbedParticles[0,0]   
             double a, b, c
             unsigned int ii 
-            unsigned int absorbedMacroParticleCount = self.absorbedMacroParticleCount
             unsigned int nCoords = self.particlesObj.getNCoords()
             double epsFailsafe = 1.e-6
             double lxHalfSqInv = 4./(self.lx-epsFailsafe*self.dx)**2, lyHalfSqInv = 4./(self.ly-epsFailsafe*self.dy)**2
-            double[:] remainingTimeStepNumpy
             double *remainingTimeStep
          
-        if absorbedMacroParticleCount > self.remainingTimeStep.shape[0]:
-            self.remainingTimeStep = numpy.empty(absorbedMacroParticleCount, dtype=numpy.double)  
-        remainingTimeStepNumpy = self.remainingTimeStep
-        remainingTimeStep = &remainingTimeStepNumpy[0]           
+        if self.absorbedMacroParticleCount > self.remainingTimeStep.shape[0]:
+            self.remainingTimeStep = numpy.empty(<unsigned int> (self.absorbedMacroParticleCount*1.1), dtype=numpy.double)  
+        remainingTimeStep = &self.remainingTimeStep[0]           
          
-        for ii in range(absorbedMacroParticleCount):
-            c = absorbedParticles[nCoords*ii]*absorbedParticles[nCoords*ii]*lxHalfSqInv + absorbedParticles[nCoords*ii+1]*absorbedParticles[nCoords*ii+1]*lyHalfSqInv - 1.
-            b = absorbedParticles[nCoords*ii]*absorbedParticles[nCoords*ii+2]*lxHalfSqInv + absorbedParticles[nCoords*ii+1]*absorbedParticles[nCoords*ii+3]*lyHalfSqInv
-            a = absorbedParticles[nCoords*ii+2]*absorbedParticles[nCoords*ii+2]*lxHalfSqInv + absorbedParticles[nCoords*ii+3]*absorbedParticles[nCoords*ii+3]*lyHalfSqInv
+        for ii in range(self.absorbedMacroParticleCount):
+            c = absorbedParticles[nCoords*ii]**2*lxHalfSqInv + absorbedParticles[nCoords*ii+1]**2*lyHalfSqInv - 1.
+            b = absorbedParticles[nCoords*ii]*absorbedParticles[nCoords*ii+2]*lxHalfSqInv + \
+                absorbedParticles[nCoords*ii+1]*absorbedParticles[nCoords*ii+3]*lyHalfSqInv
+            a = absorbedParticles[nCoords*ii+2]**2*lxHalfSqInv + absorbedParticles[nCoords*ii+3]**2*lyHalfSqInv
             remainingTimeStep[ii] = (b - sqrt(b*b - a*c))/a
             absorbedParticles[nCoords*ii] -= remainingTimeStep[ii]*absorbedParticles[nCoords*ii+2]
             absorbedParticles[nCoords*ii+1] -= remainingTimeStep[ii]*absorbedParticles[nCoords*ii+3]
  
  
-    cpdef calculateNormalVectors(self):      
+    cpdef object calculateNormalVectors(AbsorbElliptical self):      
     
         cdef: 
-            double[:,:] absorbedParticlesBuff = self.absorbedParticles
-            double *absorbedParticles = &absorbedParticlesBuff[0,0]   
+            double *absorbedParticles = &self.absorbedParticles[0,0]   
             unsigned int absorbedMacroParticleCount = self.absorbedMacroParticleCount    
             unsigned int nCoords = self.particlesObj.getNCoords()       
             unsigned int ii
             double lxHalfSqInv = 4./(self.lx*self.lx), lyHalfSqInv = 4./(self.ly*self.ly)
             double lxHalfP4Inv = lxHalfSqInv*lxHalfSqInv, lyHalfP4Inv = lyHalfSqInv*lyHalfSqInv
-            double[:,:] normalVectorsBuff
             double *normalVectors
             double normInv
                          
         if absorbedMacroParticleCount > self.normalVectors.shape[0]:
-            self.normalVectors = numpy.empty((absorbedMacroParticleCount,2), dtype=numpy.double)
+            self.normalVectors = numpy.empty((<unsigned int> (absorbedMacroParticleCount*1.1),2), dtype=numpy.double)
              
-        normalVectorsBuff = self.normalVectors
-        normalVectors = &normalVectorsBuff[0,0]    
+        normalVectors = &self.normalVectors[0,0]    
          
         for ii in range(absorbedMacroParticleCount):
-            normInv = 1./sqrt(absorbedParticles[nCoords*ii]*absorbedParticles[nCoords*ii]*lxHalfP4Inv + absorbedParticles[nCoords*ii+1]*absorbedParticles[nCoords*ii+1]*lyHalfP4Inv)
+            normInv = 1./sqrt(absorbedParticles[nCoords*ii]**2*lxHalfP4Inv + absorbedParticles[nCoords*ii+1]**2*lyHalfP4Inv)
             normalVectors[2*ii] = -absorbedParticles[nCoords*ii]*lxHalfSqInv*normInv
             normalVectors[2*ii+1] = -absorbedParticles[nCoords*ii+1]*lyHalfSqInv*normInv
  
 
 
 
-# cdef class AbsorbArbitrary(ParticleBoundary):
-#      
-#     cpdef indexInside(self):
-#  
-#         cdef:
-#             numpy.ndarray[numpy.double_t, ndim=2] particleDataNumpy = self.particlesObj.getParticleData()
-#             double *particleData = &particleDataNumpy[0,0]
-#             numpy.ndarray[numpy.double_t] inCellNumpy = self.particlesObj.getInCell()
-#             double *inCell = &inCellNumpy[0]
-#             numpy.ndarray[numpy.uint16_t] cellTypeNumpy = self.gridObj.getCellType()
-#             double *cellType = &cellTypeNumpy[0]
-#             unsigned int macroParticleCount = self.particlesObj.getMacroParticleCount()
-#             unsigned int nCoords = self.particlesObj.getNCoords()            
-#             unsigned int ii
-#             double lxHalfSqInv = 4./self.lx**2, lyHalfSqInv = 4./self.ly**2
-#             numpy.ndarray[numpy.uint16_t] isInsideNumpy
-#             unsigned int *isInside  
-#             
-#         if self.inside.shape[0]<macroParticleCount:
-#             self.isInside = numpy.empty(macroParticleCount, dtype=numpy.uint16)
-#         isInsideNumpy = self.isInside
-#         isInside = &isInsideNumpy[0]
-#         
-#         for ii in range(macroParticleCount):
-#             if cellType[inCell[ii]] == 2:
-#                 isInside[ii] = 1
-#             elif cellType[inCell[ii]] == 1:
-#                 isInside[ii] = 0
-#             else:
-                
-         
-#     def calculateInteractionPoint(self):       
-#         self.remainingTimeStep = numpy.empty(self.absorbedParticles.shape[0], order='C')
-#         absorbCircularC.calculateInteractionPoint(self.absorbedParticles, self.remainingTimeStep, self.gridObj.getRadius(), self.epsFailsafe)
-# 
-#     def calculateNormalVectors(self):       
-#         self.normalVectors = numpy.empty((self.absorbedParticles.shape[0],2), order='C')
-#         absorbCircularC.calculateNormalVectors(self.absorbedParticles, self.normalVectors)
-#         
-#     def clipToDomain(self):
-#         particleData = self.particlesObj.getParticleData()
-#         particleDataRadiusClip = numpy.sqrt(particleData[:,0]**2 + particleData[:,1]**2)
-#         particleDataRadiusClip = numpy.clip(particleDataRadiusClip,0,self.gridObj.getRadius())/particleDataRadiusClip
-#         particleData[:,:2] *= particleDataRadiusClip[:,numpy.newaxis]
+cdef class AbsorbArbitraryCutCell(ParticleBoundary):
+ 
+    cpdef unsigned short isInside(AbsorbArbitraryCutCell self, double x, double y):
+        cdef:
+            unsigned short *insideFaces = &self.gridObj.getInsideFaces()[0]
+            double *boundaryPoints = &self.gridObj.getBoundaryPoints()[0,0]
+            unsigned int *cutCellPointsInd = &self.gridObj.getCutCellPointsInd()[0,0]
+            double lxHalf = 0.5*self.gridObj.getLxExt(), lyHalf = 0.5*self.gridObj.getLyExt()
+            double dxi = 1./self.gridObj.getDx(), dyi = 1./self.gridObj.getDy() 
+            unsigned int nx = self.gridObj.getNxExt()        
+            unsigned int ii, indx, indy
+            unsigned int inCell
 
-# Checks if point is in konvex polygon.
-# http://demonstrations.wolfram.com/AnEfficientTestForAPointToBeInAConvexPolygon/
-cdef unsigned int pointInPolygon(double* pointCoords, double* cornerCoords, unsigned int nCorners) nogil:
-    cdef:
-        unsigned int currentInd, ii, isInside = 1
-        double[10] cornerCoordsTrans
-        double ai
-        
-    for ii in range(nCorners):
-        cornerCoordsTrans[2*ii] = cornerCoords[2*ii] - pointCoords[0]
-        cornerCoordsTrans[2*ii+1] = cornerCoords[2*ii+1] - pointCoords[1]
+
+        indx = <unsigned int> ( (x+lxHalf)*dxi )
+        indy = <unsigned int> ( (y+lyHalf)*dyi )
+        inCell = indx + indy*nx
+
+        if insideFaces[inCell]==8:
+            return 1
+        elif insideFaces[inCell]==0:
+            return 0
+        # Point-in-polygon check with just the two cut-cell points.
+        else:
+            if ( (boundaryPoints[2*cutCellPointsInd[2*inCell]]-x) * (boundaryPoints[2*cutCellPointsInd[2*inCell+1]+1]-y) >
+                 (boundaryPoints[2*cutCellPointsInd[2*inCell+1]]-x) * (boundaryPoints[2*cutCellPointsInd[2*inCell]+1]-y) ):
+                return 1
+            else:
+                return 0   
+ 
+                 
+    cpdef object indexInside(AbsorbArbitraryCutCell self):
+  
+        cdef:
+            double *particleData = &self.particlesObj.getParticleData()[0,0]
+            unsigned short *isInside = &self.particlesObj.getIsInside()[0]
+            unsigned short *insideFaces = &self.gridObj.getInsideFaces()[0]
+            double *boundaryPoints = &self.gridObj.getBoundaryPoints()[0,0]
+            unsigned int *cutCellPointsInd = &self.gridObj.getCutCellPointsInd()[0,0]
+            unsigned int macroParticleCount = self.particlesObj.getMacroParticleCount()
+            unsigned int nCoords = self.particlesObj.getNCoords()   
+            double lxHalf = 0.5*self.gridObj.getLxExt(), lyHalf = 0.5*self.gridObj.getLyExt()
+            double dxi = 1./self.gridObj.getDx(), dyi = 1./self.gridObj.getDy() 
+            unsigned int nx = self.gridObj.getNxExt()        
+            unsigned int ii, indx, indy
+            unsigned int inCell
+
+#        # First clip particles to grid. This is a fail safe and should be avoided by small enough time steps!
+#        _clipParticleDataToGrid(particleData, macroParticleCount, nCoords, 
+#                                lxHalf - 1.e-6*self.gridObj.getDx(), lyHalf - 1.e-6*self.gridObj.getDy())
+                                
+        for ii in range(macroParticleCount):
+            indx = <unsigned int> ( (particleData[nCoords*ii]+lxHalf)*dxi )
+            indy = <unsigned int> ( (particleData[nCoords*ii+1]+lyHalf)*dyi )
+            inCell = indx + indy*nx
+
+            if insideFaces[inCell]==8:
+                isInside[ii] = 1
+            elif insideFaces[inCell]==0:
+                isInside[ii] = 0
+            # Point-in-polygon check with just the two cut-cell points.
+            else:
+                if ( (boundaryPoints[2*cutCellPointsInd[2*inCell]]-particleData[nCoords*ii]) * 
+                     (boundaryPoints[2*cutCellPointsInd[2*inCell+1]+1]-particleData[nCoords*ii+1]) >
+                     (boundaryPoints[2*cutCellPointsInd[2*inCell+1]]-particleData[nCoords*ii]) * 
+                     (boundaryPoints[2*cutCellPointsInd[2*inCell]+1]-particleData[nCoords*ii+1]) ):
+                    isInside[ii] = 1
+                else:
+                    isInside[ii] = 0   
     
-    ai = cornerCoordsTrans[2]*cornerCoordsTrans[1] - cornerCoordsTrans[0]*cornerCoordsTrans[3]
-    if ai>=0.:
-        for ii in range(1, nCorners):
-            currentInd = <unsigned int> (fmod(ii, nCorners-1) + 0.1)
-            ai = cornerCoordsTrans[2*ii+2]*cornerCoordsTrans[2*ii+1] - \
-                 cornerCoordsTrans[2*currentInd]*cornerCoordsTrans[2*currentInd+3]
-            if ai<0:
-                isInside = 0
-                break
-    else:
-        for ii in range(1, nCorners):
-            currentInd = <unsigned int> (fmod(ii, nCorners-1) + 0.1)
-            ai = cornerCoordsTrans[2*ii+2]*cornerCoordsTrans[2*ii+1] - \
-                 cornerCoordsTrans[2*currentInd]*cornerCoordsTrans[2*currentInd+3]
-            if ai>0:
-                isInside = 0
-                break
-    return isInside
+    # Inspired by http://stackoverflow.com/questions/563198/how-do-you-detect-where-two-line-segments-intersect .
+    cpdef object calculateInteractionPoint(AbsorbArbitraryCutCell self):       
+        cdef:
+            double *absorbedParticles = &self.absorbedParticles[0,0]
+            double *boundaryPoints = &self.gridObj.getBoundaryPoints()[0,0]
+            unsigned int *cutCellPointsInd = &self.gridObj.getCutCellPointsInd()[0,0]
+            unsigned short *insideFaces = &self.gridObj.getInsideFaces()[0]
+            unsigned int nCoords = self.particlesObj.getNCoords()       
+            unsigned int nx = self.gridObj.getNxExt()
+            double dt = self.particlesObj.getDt()
+            double lxHalf = 0.5*self.gridObj.getLxExt(), lyHalf = 0.5*self.gridObj.getLyExt()
+            double dxi = 1./self.gridObj.getDx(), dyi = 1./self.gridObj.getDy() 
+            unsigned int ii, currentInCell, indx, indy, inCell, stopFlag
+            int kk, mm
+            double rx, ry, sx, sy, rCrossS, t, u, qmpx, qmpy
+            int xDir[2]
+            int yDir[2]
+            double* remainingTimeStep
+        
+        if self.absorbedMacroParticleCount > self.remainingTimeStep.shape[0]:
+            self.remainingTimeStep = numpy.empty(<unsigned int> (self.absorbedMacroParticleCount*1.1), dtype=numpy.double)  
+        remainingTimeStep = &self.remainingTimeStep[0]             
+         
+        for ii in range(self.absorbedMacroParticleCount):
+            indx = <unsigned int> ( (absorbedParticles[nCoords*ii]+lxHalf)*dxi )
+            indy = <unsigned int> ( (absorbedParticles[nCoords*ii+1]+lyHalf)*dyi )
+            inCell = indx + indy*nx
+            
+            rx = -dt*absorbedParticles[nCoords*ii+2]
+            ry = -dt*absorbedParticles[nCoords*ii+3]
+            
+            xDir[0] = 0
+            yDir[0] = 0
+            if rx<0.:
+                xDir[1] = -1
+            else:
+                xDir[1] = 1
+            if ry<0.:
+                yDir[1] = -1
+            else:
+                yDir[1] = 1
+            stopFlag = 0
+            for kk in xDir:
+                for mm in yDir:
+                    currentInCell = inCell + kk + mm*nx
+                    if insideFaces[currentInCell] != 0 and insideFaces[currentInCell] != 8:
+                        sx = boundaryPoints[2*cutCellPointsInd[2*currentInCell+1]] - \
+                             boundaryPoints[2*cutCellPointsInd[2*currentInCell]]
+                        sy = boundaryPoints[2*cutCellPointsInd[2*currentInCell+1]+1] - \
+                             boundaryPoints[2*cutCellPointsInd[2*currentInCell]+1]
+                        rCrossS = rx*sy - ry*sx
+                        if rCrossS != 0.:
+                            qmpx = boundaryPoints[2*cutCellPointsInd[2*currentInCell]] - absorbedParticles[nCoords*ii]
+                            qmpy = boundaryPoints[2*cutCellPointsInd[2*currentInCell]+1] - absorbedParticles[nCoords*ii+1]
+                            t = (qmpx*sy - qmpy*sx)/rCrossS
+                            u = (qmpx*ry - qmpy*rx)/rCrossS
+                            if 0. <= t and t <= 1. and 0. <= u and u <= 1.:
+                                absorbedParticles[nCoords*ii] += t*rx*(1.+1.e-3)             # Some safety margin.
+                                absorbedParticles[nCoords*ii+1] += t*ry*(1.+1.e-3)           # Some safety margin.
+                                remainingTimeStep[ii] = t*(1.+1.e-3)*dt  
+                                stopFlag = 1
+                                break
+                if stopFlag == 1:
+                    break
+            if stopFlag == 1:
+                continue
+            # Correct cell not found.
+            print 'WARNING: Correct boundary not found. Reduce time step! Particles should not cross more than one cell.'
+            
+ 
+    cpdef object calculateNormalVectors(AbsorbArbitraryCutCell self):       
+        cdef:
+            double *absorbedParticles = &self.absorbedParticles[0,0]
+            unsigned int nx = self.gridObj.getNxExt()
+            double* cutCellNormalVectors = &self.gridObj.getCutCellNormalVectors()[0,0]
+            double lxHalf = 0.5*self.gridObj.getLxExt(), lyHalf = 0.5*self.gridObj.getLyExt()
+            double dxi = 1./self.gridObj.getDx(), dyi = 1./self.gridObj.getDy() 
+            unsigned int nCoords = self.particlesObj.getNCoords()       
+            double* normalVectors
+            unsigned int indx, indy, inCell, ii
+                   
+        if self.absorbedMacroParticleCount > self.normalVectors.shape[0]:
+            self.normalVectors = numpy.empty((<unsigned int> (self.absorbedMacroParticleCount*1.1),2), dtype=numpy.double)             
+        normalVectors = &self.normalVectors[0,0]  
+        
+        for ii in range(self.absorbedMacroParticleCount):
+            indx = <unsigned int> ( (absorbedParticles[nCoords*ii]+lxHalf)*dxi )
+            indy = <unsigned int> ( (absorbedParticles[nCoords*ii+1]+lyHalf)*dyi )
+            inCell = indx + indy*nx
+            
+            normalVectors[2*ii] = cutCellNormalVectors[2*inCell]
+            normalVectors[2*ii+1] = cutCellNormalVectors[2*inCell+1]
             
             
+            
+cdef void _clipParticleDataToGrid(double *particleData, unsigned int macroParticleCount, 
+                                  unsigned int nCoords, double lxHalf, double lyHalf) nogil:
+
+    cdef:
+        unsigned int ii
+        
+    for ii in range(macroParticleCount):
+        if particleData[nCoords*ii] > lxHalf:
+            particleData[nCoords*ii] = lxHalf
+        elif particleData[nCoords*ii] < -lxHalf:
+            particleData[nCoords*ii] = -lxHalf
+        if particleData[nCoords*ii+1] > lyHalf:
+            particleData[nCoords*ii+1] = lyHalf
+        elif particleData[nCoords*ii+1] < -lyHalf:
+            particleData[nCoords*ii+1] = -lyHalf
+
+
+        

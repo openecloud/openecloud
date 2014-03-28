@@ -3,14 +3,20 @@ cimport numpy
 cdef class Grid:
 
     cdef:
-        unsigned int nx, ny, np
-        double lx, ly, dx, dy, cutCellAcc, cutCellMinEdgeLength, scanAroundPoint
-        numpy.ndarray xMesh, yMesh, cosAlpha, sinAlpha, cosBeta, sinBeta 
-        numpy.ndarray insidePoints, insidePointsInd, insideEdges, insideEdgesInd
-        numpy.ndarray insideCells, insideCellsInd
-        numpy.ndarray ds, dsi, da, dai, dst, dsti, dat, dati
-        object gridBoundaryObj, edgeToNode
+        unsigned int nx, ny, np, nxExt, nyExt, npExt
+        double lx, ly, lxExt, lyExt, dx, dy, cutCellAcc, cutCellMinEdgeLength, scanAroundPoint
+        double[:] xMesh, yMesh, cosAlpha, sinAlpha, cosBeta, sinBeta
+        double[:] ds, dsi, da, dai, dst, dsti, dat, dati
+        double[:,:] boundaryPoints
+        unsigned int[:] boundaryPointsInd
+        unsigned int[:,:] cutCellPointsInd
+        double[:,:] cutCellCenter
+        double[:,:] cutCellNormalVectors
+        unsigned short[:] insidePoints, insideEdges, insideFaces 
+        object boundFunc, edgeToNode
         
+        void computeStaircaseGridGeom(Grid self)
+        void computeCutCellGridGeom(Grid self)
     cpdef double getDx(Grid self)
     cpdef double getDy(Grid self)
     cpdef double getLx(Grid self)
@@ -20,3 +26,22 @@ cdef class Grid:
     cpdef unsigned int getNp(Grid self)
     cpdef double[:] getXMesh(Grid self)
     cpdef double[:] getYMesh(Grid self)
+    cpdef double[:] getDs(Grid self)
+    cpdef double[:] getDst(Grid self)
+    cpdef double getLxExt(Grid self)
+    cpdef double getLyExt(Grid self)
+    cpdef double getDx(Grid self)
+    cpdef double getDy(Grid self)
+    cpdef unsigned int getNxExt(Grid self)
+    cpdef unsigned int getNyExt(Grid self)
+    cpdef unsigned int getNpExt(Grid self)
+    cpdef double[:,:] getBoundaryPoints(Grid self)
+    cpdef unsigned int[:] getBoundaryPointsInd(Grid self)
+    cpdef unsigned int[:,:] getCutCellPointsInd(Grid self)
+    cpdef object getBoundFunc(Grid self)
+    cpdef unsigned short[:] getInsideFaces(Grid self)
+    cpdef unsigned int[:] getInCell(Grid self)
+    cpdef double[:,:] getCutCellCenter(Grid self)
+    cpdef double[:,:] getCutCellNormalVectors(Grid self)
+    
+                   

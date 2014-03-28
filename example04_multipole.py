@@ -20,8 +20,8 @@ import datetime
 import matplotlib.pyplot as mpl
 
 # Several simulation parameters
-nx = 64     # Number of cells in x
-ny = 64     # and y
+nx = 32     # Number of cells in x
+ny = 32     # and y
 lx = 0.04   # Domains size in x
 ly = 0.04   # and y
 nParticles = 100000             # Number of macro particles
@@ -30,11 +30,11 @@ nMaxParticles = nParticles      # Maximum number of macro particles
 dt = 2.155172413795e-11         # Time step
 nTimeSteps = 10000              # Number of time steps of the simulation
 nAnimate = 20                   # Number of time steps between graphical output
-nTimeStepsPartMan = 100         # Number of time steps between particle management
+nTimeStepsPartMan = 50          # Number of time steps between particle management
 nHistoryOut = 1000              # Number of time steps between history output
 
 # Generate all objects
-gridObj = Grid([nx,ny],[lx,ly],'elliptical')                        # Elliptical boundary with constant radius is circular
+gridObj = Grid(nx,ny,lx,ly,1)                                       # Elliptical boundary with constant radius is circular
 beamObj = LHCBeam(gridObj,dt)                                       # LHC beam type
 particlesObj = particles.Particles('electrons','variableWeight')    # Particles types and kind
 particleBoundaryObj = AbsorbElliptical(gridObj,particlesObj)        # Particle boundary fitting to grid/field boundary
@@ -42,8 +42,8 @@ secElecEmitObj = FurmanEmitter(particleBoundaryObj,particlesObj)    # Secondary 
 poissonSolverObj = PoissonSolver(gridObj)                           # Poisson solver for electric field calculation
 
 # Some setup
-homoLoader(gridObj, particlesObj, nParticles, weightInit)           			    # Loads a homogeneous particle distribution
-bAtGridPoints = magneticField.multipoleExpansion(gridObj, [0., 5., 0., 0.01])        # Prepare quadrupole field (with error).
+homoLoader(gridObj, particlesObj, particleBoundaryObj, nParticles, weightInit)      # Loads a homogeneous particle distribution
+bAtGridPoints = magneticField.multipoleExpansion(gridObj, [0., 5., 0., 0.01])       # Prepare quadrupole field (with error).
 
 physicalParticleCount = numpy.zeros(nTimeSteps, dtype=numpy.uint0) 			        # History of physical particle count
 macroParticleCount = numpy.zeros(nTimeSteps, dtype=numpy.uint0)     			    # History of macro particle count
@@ -79,7 +79,7 @@ for ii in range(nTimeSteps):
         numpy.save('particleData.npy', particlesObj.getParticleData())
 
     # Solve Poisson problem with electron charge on grid and imprinted beam charge
-    poissonSolverObj.solve(particlesObj.getChargeOnGrid()+beamObj.getCharge(ii*dt))     
+    poissonSolverObj.solve(numpy.asarray(particlesObj.getChargeOnGrid())+beamObj.getCharge(ii*dt))     
 
     # Interpolate electric field to particle position
     particlesObj.eFieldToParticles(gridObj, poissonSolverObj.getEAtGridPoints())

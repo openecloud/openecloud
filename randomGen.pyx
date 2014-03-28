@@ -22,7 +22,7 @@ cdef extern from "gsl/gsl_randist.h":
 cdef gsl_rng* r = gsl_rng_alloc(gsl_rng_mt19937)
 gsl_rng_set(r, <unsigned long> time.time()*256)
         
-cdef void seed(unsigned long x):  
+cpdef object seed(unsigned long x):  
     gsl_rng_set(r, x)
 
 cdef double rand() nogil:

@@ -35,78 +35,6 @@ cdef class Particles:
         self.particleData = numpy.empty((0,self.nCoords), dtype=numpy.double)
 
 
-    cpdef object setBAtParticles(Particles self, double[:,:] bAtParticles):
-        self.bAtParticles = bAtParticles
-               
-    cpdef object setParticleData(Particles self, double[:,:] particleData):
-            
-        if particleData.is_c_contig():
-            self.particleData = particleData
-        else:
-            self.particleData = particleData.copy()
-        self.macroParticleCount = particleData.shape[0]
-        self.inCell = numpy.empty(self.macroParticleCount, dtype=numpy.uintc)
-        self.weightLowXLowY = numpy.empty(self.macroParticleCount, dtype=numpy.double)
-        self.weightUpXLowY = numpy.empty(self.macroParticleCount, dtype=numpy.double)
-        self.weightLowXUpY = numpy.empty(self.macroParticleCount, dtype=numpy.double)
-        self.weightUpXUpY = numpy.empty(self.macroParticleCount, dtype=numpy.double)
-        self.eAtParticles = numpy.empty((self.macroParticleCount,2), dtype=numpy.double)
-        self.bAtParticles = numpy.empty((self.macroParticleCount,3), dtype=numpy.double) 
-        self.isInside = numpy.empty(self.macroParticleCount, dtype=numpy.ushort) 
-
-    cpdef numpy.ndarray getParticleData(Particles self):
-        return numpy.asarray(self.particleData[:self.macroParticleCount])
-    
-    cpdef double[:,:] getFullParticleData(Particles self):
-        return self.particleData
-    
-    cpdef unsigned int getNCoords(Particles self):
-        return self.nCoords   
-    
-    cpdef unsigned int getMacroParticleCount(Particles self):
-        return self.macroParticleCount
-    
-    cpdef object setMacroParticleCount(Particles self, unsigned int macroParticleCount):
-        self.macroParticleCount = macroParticleCount
-    
-    cpdef numpy.ndarray getChargeOnGrid(Particles self):
-        return numpy.asarray(self.chargeOnGrid)
-    
-    cpdef object setChargeOnGrid(Particles self, double[:] chargeOnGrid):
-        self.chargeOnGrid = chargeOnGrid
-    
-    cpdef double getParticleCharge(Particles self):
-        return self.particleCharge
-    
-    cpdef double getParticleMass(Particles self):
-        return self.particleMass
-    
-    cpdef unsigned int[:] getInCell(Particles self):
-        return self.inCell[:self.macroParticleCount]
-    
-    cpdef unsigned short[:] getFullIsInside(Particles self):
-        return self.isInside
-    
-    cpdef numpy.ndarray getIsInside(Particles self):
-        return numpy.asarray(self.isInside[:self.macroParticleCount])
-    
-    cpdef double[:] getWeightLowXUpY(Particles self):
-        return self.weightLowXUpY[:self.macroParticleCount]
-    
-    cpdef double[:] getWeightLowXLowY(Particles self):
-        return self.weightLowXLowY[:self.macroParticleCount]
-    
-    cpdef double[:] getWeightUpXUpY(Particles self):
-        return self.weightUpXUpY[:self.macroParticleCount]
-    
-    cpdef double[:] getWeightUpXLowY(Particles self):
-        return self.weightUpXLowY[:self.macroParticleCount]
-    
-    cpdef double[:,:] getEAtParticles(Particles self):
-        return self.eAtParticles[:self.macroParticleCount]
-    
-    cpdef double[:,:] getBAtParticles(Particles self):
-        return self.bAtParticles
      
     cpdef double getMeanWeight(Particles self):
         cdef:
@@ -124,38 +52,39 @@ cdef class Particles:
     cpdef object calcGridWeights(Particles self, grid.Grid gridObj):
         _calcGridWeights(&self.particleData[0,0], &self.inCell[0], &self.weightLowXLowY[0], &self.weightUpXLowY[0],
                          &self.weightLowXUpY[0], &self.weightUpXUpY[0],
-                         1./gridObj.getDx(), 1./gridObj.getDy(), gridObj.getLx()*0.5, gridObj.getLy()*0.5,
-                         gridObj.getNx(), self.nCoords, self.macroParticleCount)
+                         1./gridObj.getDx(), 1./gridObj.getDy(), gridObj.getLxExt()*0.5, gridObj.getLyExt()*0.5,
+                         gridObj.getNxExt(), self.nCoords, self.macroParticleCount)
 
     cpdef object eFieldToParticles(Particles self, grid.Grid gridObj, double[:] eAtGridPoints):
         _fieldToParticles(&eAtGridPoints[0], &self.eAtParticles[0,0], &self.inCell[0], 
                           &self.weightLowXLowY[0], &self.weightUpXLowY[0],
-                          &self.weightLowXUpY[0], &self.weightUpXUpY[0], gridObj.getNx(), 
-                          gridObj.getNp(), self.macroParticleCount)
+                          &self.weightLowXUpY[0], &self.weightUpXUpY[0], gridObj.getNxExt(), 
+                          gridObj.getNpExt(), self.macroParticleCount)
     
     cpdef object bFieldToParticles(Particles self, grid.Grid gridObj, double[:] bAtGridPoints):
         _fieldToParticles3Dims(&bAtGridPoints[0], &self.bAtParticles[0,0], &self.inCell[0], 
                                &self.weightLowXLowY[0], &self.weightUpXLowY[0],
                                &self.weightLowXUpY[0], &self.weightUpXUpY[0], 
-                               gridObj.getNx(), gridObj.getNp(), self.macroParticleCount)
+                               gridObj.getNxExt(), gridObj.getNpExt(), self.macroParticleCount)
  
     cpdef object chargeToGrid(Particles self, grid.Grid gridObj):
         cdef:
-            unsigned int np = gridObj.getNp()
+            unsigned int np = gridObj.getNpExt()
         if self.chargeOnGrid.shape[0] < np: 
             self.chargeOnGrid = numpy.empty(np, dtype=numpy.double)
         _chargeToGrid(&self.particleData[0,0], &self.inCell[0], &self.weightLowXLowY[0], &self.weightUpXLowY[0],
                       &self.weightLowXUpY[0], &self.weightUpXUpY[0], &self.chargeOnGrid[0], self.particleCharge, 
-                      gridObj.getNx(), gridObj.getNp(), self.nCoords, self.macroParticleCount)
+                      gridObj.getNxExt(), gridObj.getNpExt(), self.nCoords, self.macroParticleCount)
 
-    cpdef object borisPush(Particles self, double dt, unsigned short typeBField = 2):     
+    cpdef object borisPush(Particles self, double dt, unsigned short typeBField = 2): 
+        self.dt = dt    
         # No magnetic field.
         if typeBField==0:
             _borisPushNoB(&self.particleData[0,0], &self.eAtParticles[0,0], dt, 
                           self.particleCharge/self.particleMass*dt, self.macroParticleCount, self.nCoords)
         # Constant (dipole/in space) magnetic field.
         elif typeBField==1:
-            _borisPushConstB(&self.particleData[0,0], &self.eAtParticles[0,0], &self.bAtParticles[0,0], dt, 
+            _borisPushConstB(&self.particleData[0,0], &self.eAtParticles[0,0], &self.bConst[0], dt, 
                              0.5*self.particleCharge/self.particleMass*dt, self.macroParticleCount, self.nCoords)
         # General magnetic field.
         else:
@@ -189,7 +118,84 @@ cdef class Particles:
                 _addAndRemoveParticles(&self.particleData[0,0], &addParticleData[0,0], &keepParticles[0], 
                                        keepParticleCount, addParticleCount, self.macroParticleCount,
                                        self.nCoords)                                        
-        self.macroParticleCount = newParticleCount                                      
+        self.macroParticleCount = newParticleCount       
+        
+    cpdef object setBConst(Particles self, double[:] bConst):
+        self.bConst = bConst
+               
+    cpdef object setParticleData(Particles self, double[:,:] particleData):
+            
+        if particleData.is_c_contig():
+            self.particleData = particleData
+        else:
+            self.particleData = particleData.copy()
+        self.macroParticleCount = particleData.shape[0]
+        self.inCell = numpy.empty(self.macroParticleCount, dtype=numpy.uintc)
+        self.weightLowXLowY = numpy.empty(self.macroParticleCount, dtype=numpy.double)
+        self.weightUpXLowY = numpy.empty(self.macroParticleCount, dtype=numpy.double)
+        self.weightLowXUpY = numpy.empty(self.macroParticleCount, dtype=numpy.double)
+        self.weightUpXUpY = numpy.empty(self.macroParticleCount, dtype=numpy.double)
+        self.eAtParticles = numpy.empty((self.macroParticleCount,2), dtype=numpy.double)
+        self.bAtParticles = numpy.empty((self.macroParticleCount,3), dtype=numpy.double) 
+        self.isInside = numpy.empty(self.macroParticleCount, dtype=numpy.ushort) 
+
+    cpdef double[:,:] getParticleData(Particles self):
+        return numpy.asarray(self.particleData[:self.macroParticleCount])
+    
+    cpdef double[:,:] getFullParticleData(Particles self):
+        return self.particleData
+    
+    cpdef unsigned int getNCoords(Particles self):
+        return self.nCoords   
+    
+    cpdef unsigned int getMacroParticleCount(Particles self):
+        return self.macroParticleCount
+    
+    cpdef object setMacroParticleCount(Particles self, unsigned int macroParticleCount):
+        self.macroParticleCount = macroParticleCount
+    
+    cpdef double[:] getChargeOnGrid(Particles self):
+        return numpy.asarray(self.chargeOnGrid)
+    
+    cpdef object setChargeOnGrid(Particles self, double[:] chargeOnGrid):
+        self.chargeOnGrid = chargeOnGrid
+    
+    cpdef double getParticleCharge(Particles self):
+        return self.particleCharge
+    
+    cpdef double getParticleMass(Particles self):
+        return self.particleMass
+    
+    cpdef unsigned int[:] getInCell(Particles self):
+        return self.inCell[:self.macroParticleCount]
+    
+    cpdef unsigned short[:] getFullIsInside(Particles self):
+        return self.isInside
+    
+    cpdef unsigned short[:] getIsInside(Particles self):
+        return self.isInside[:self.macroParticleCount]
+    
+    cpdef double[:] getWeightLowXUpY(Particles self):
+        return self.weightLowXUpY[:self.macroParticleCount]
+    
+    cpdef double[:] getWeightLowXLowY(Particles self):
+        return self.weightLowXLowY[:self.macroParticleCount]
+    
+    cpdef double[:] getWeightUpXUpY(Particles self):
+        return self.weightUpXUpY[:self.macroParticleCount]
+    
+    cpdef double[:] getWeightUpXLowY(Particles self):
+        return self.weightUpXLowY[:self.macroParticleCount]
+    
+    cpdef double[:,:] getEAtParticles(Particles self):
+        return self.eAtParticles[:self.macroParticleCount]
+    
+    cpdef double[:,:] getBAtParticles(Particles self):
+        return self.bAtParticles
+        
+    cpdef double getDt(Particles self):
+        return self.dt
+                               
 
         
 cdef void _addAndRemoveParticlesNewArray(double* fullParticleData, double* addParticleData, unsigned short* keepParticles,
@@ -313,7 +319,7 @@ cdef void _borisPushConstB(double* particleData, double* eAtParticles, double* b
         particleData[nCoords*ii+4] += vs0*s1 - vs1*s0     
         particleData[nCoords*ii] += dt*particleData[nCoords*ii+2]
         particleData[nCoords*ii+1] += dt*particleData[nCoords*ii+3]
-               
+                       
 # Non-relativistic boris push without magnetic field.        
 cdef void _borisPushNoB(double* particleData, double* eAtParticles, double dt, double chargeDtOverMass,
                         unsigned int macroParticleCount, unsigned int nCoords) nogil:
