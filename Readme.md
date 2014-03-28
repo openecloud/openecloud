@@ -11,12 +11,12 @@ Quick Start
 1. Download the latest version of the code from the [repository](https://github.com/openecloud/openecloud).
 2. Make sure you have installed the dependencies (see Sec. **Dependencies**).
 3. Run the setup.py (under Linux in the command line: python setup.py build_ext --inplace).
-4. Run example01.py (under Linux in the command line: python example01.py).
+4. Run example01 (under Linux in the command line: python example01_basic.py).
 
 New Changes
 ---------
 
-- Added arbitrary boundaries.
+- Added arbitrary boundaries (see example05).
 - Added a better particle management method *localRandom*. It is based on the [particle management with the help of kd-trees](http://arxiv.org/abs/1301.1552) (see example03).
 - Added arbitrary magnetic fields in the *magneticFields* module (see example04).
 
