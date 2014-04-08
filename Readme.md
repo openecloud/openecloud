@@ -24,15 +24,15 @@ New Changes
 Module Descriptions
 ---------
 
-Every module usually consists of a main class which is used to store relevant data for the specific purpose in an object. The object is then used to manipulate the conatining data with provided function. For example the module *particles* conatins the class *Particles* which stores the particle coordinates and a push of these particle coordinates can be done with one of the *borisPush* functions in the same module. Modules start with lowercase and classes with capital letters. Modules usually consist of the main class (with the same name, only capital initial letter) and some helper functions.
+Every module usually consists of a main class which is used to store relevant data for the specific purpose in an object. The object is then used to manipulate the containing data with provided function. For example the module *particles* contains the class *Particles* which stores the particle coordinates and a push of these particle coordinates can be done with one of the *borisPush* functions in the same module. Modules start with lowercase and classes with capital letters. Modules usually consist of the main class (with the same name, only capital initial letter) and some helper functions.
 
 ### grid
 
-A basic module to handle the properties of the computational grid, like grid lengths and number of cells in each direction. Supports cut-cell boundaries. Only supports equidistant (in each direction) and cartesian grids for now, but this is mainly due to the particles module and not due to the *grid* and *poissonSolver* module. A *Grid* object is handed to every function which needs data of or on the grid. Note that the grid boundary for field computations is implemented here, but particle boundaries are implemented in the *ParticleBoundary* class.
+A basic module to handle the properties of the computational grid, like grid lengths and number of cells in each direction. Supports cut-cell boundaries. Only supports equidistant (in each direction) and cartesian grids for now, but this is mainly due to the particles module (performance!) and not due to the *grid* and *poissonSolver* module. A *Grid* object is handed to every function which needs data of or on the grid. Note that the grid boundary for field computations is implemented here, but particle boundaries are implemented in the *ParticleBoundary* class.
 
 ### poissonSolver
 
-Implements a Poisson solver based on the Finite Integration Technique (which is very similar to Finite Differences). The major trick here usually overlooked in other codes is that it is much faster to do a LU-decomposition once of the system matrix at the beginning of the simulation and then only doing the backwards substitution at each time step than using an iterative solver. The performance with the Super-LU library is comparable to FFT-Poisson solvers but much more flexible with cut-cell boundaries.
+Implements a Poisson solver based on the Finite Integration Technique (which is very similar to Finite Differences). The major trick here usually overlooked in other codes is that it is much faster to do a LU-decomposition once of the system matrix at the beginning of the simulation and then only doing the backwards substitution at each time step than using an iterative solver. The performance with the Super-LU library is comparable to FFT-Poisson solvers on a rectangular domain but much more flexible with cut-cell boundaries.
 
 ### particles
 
@@ -41,23 +41,23 @@ Module to store and modifiy particle data, e.g. doing a Boris push.
 
 ### particleBoundary
 
-This is more or less a helper module to implement different particle boundaries. This boundary is not automatically the same physical boundary as the grid boundary in the *grid* module.
+This is more or less a helper module to implement different particle boundaries. Note that this boundary does not automatically represent the same physical boundary as the grid boundary in the *grid* module. Choose carefull.y
 
 ### particleEmitter
 
-This module implements different particle emitters which for example take the particles absorbed by the *particleBoundary* class to calculate secondary electrons emitted from the boundary. Contains loaders for inital particle distributions as well.
+This module implements different particle emitters which for example take the particles absorbed by the *particleBoundary* class to calculate secondary electrons emitted from the boundary (most notably the [Furman-model](http://dx.doi.org/10.1103/PhysRevSTAB.5.124404 )). Contains loaders for inital particle distributions as well.
 
 ### particleManagement
 
-Provides methods to manage the particle number in the simulations. This is necessary due to the exponential growth of the electrons in buildup simulations. Currently only very simple algorithms are used.
+Provides methods to manage the particle number in the simulations. This is necessary due to the exponential growth of the electrons in buildup simulations. Currently a very simple algorithm ("russian roulette") and [particle management with the help of kd-trees](http://arxiv.org/abs/1301.1552) are used.
 
 ### beam
 
-Some simple methods to provide a rigid beam charge distribution which can be imprinted on the grid. The user can add his beam profile here.
+Some simple methods to provide a rigid beam charge distribution which can be imprinted on the grid. The user can add his beam properties here.
 
 ### specFun
 
-Wraps several special functions of the GSL mainly needed by the *particleEmitter* module.
+Wraps several special functions of the GSL mainly needed by the *particleEmitter* module and provides some additional ones.
 
 ### randomGen
 
@@ -65,11 +65,11 @@ Wraps some random number generation of the GSL.
 
 ### magneticField
 
-Currently only provides a method to calculate an arbitrary magnetic field. There was no other suitable module to include this.
+Currently only provides a method to calculate an arbitrary magnetic field. 
 
 ### constants
 
-Module to store and provide global constants.
+Module to store and provide global constants like the speed of light.
 
 ### plot
 
@@ -97,7 +97,7 @@ Short reasoning for the packages:
 - Scipy is used for some exotic functions, but is increasingly replaced by Cython/C-functions or libraries for better performance. It is desirable to replace most or all Scipy dependencies in the future.
 - For random number generation the Mersenne-Twister of the GSL is used and some special functions. 
 - Matplotlib is mainly used in the examples for graphical output. It is highly recommended but isn't stricly necessary for running the code.
-- To actually compile the Cython files a C compiler is obviously needed. The standards of Ubuntu 12.04 worked flawlessly for us. Install with sudo apt-get install build-essential, but this most likely is already on your system.
+- To actually compile the Cython files a C compiler is obviously needed. The standards of Ubuntu 12.04 worked flawlessly for us. Install with *sudo apt-get install build-essential*, but this most likely is already on your system.
 
 Furthermore the SuperLU library is used to solve the Poisson problem (currently through the Scipy implementation). UMFPACK provides similar sophisticated LU-decomposition and might be a better choice, or a slim/tailered Cython implementation of a suitable LU-decomposition.
 
