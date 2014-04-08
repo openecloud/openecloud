@@ -10,7 +10,7 @@ Quick Start
 
 1. Download the latest version of the code from the [repository](https://github.com/openecloud/openecloud).
 2. Make sure you have installed the dependencies (see Sec. **Dependencies**).
-3. Run the setup.py (under Linux in the command line: python setup.py build_ext --inplace).
+3. Run the setup (under Linux in the command line: python setup.py build_ext --inplace).
 4. Run example01 (under Linux in the command line: python example01_basic.py).
 
 New Changes
