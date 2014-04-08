@@ -16,7 +16,7 @@ Quick Start
 New Changes
 ---------
 
-- Added arbitrary boundaries (see example05).
+- Added arbitrary cut-cell boundaries (see example05).
 - Added a better particle management method *localRandom*. It is based on the [particle management with the help of kd-trees](http://arxiv.org/abs/1301.1552) (see example03).
 - Added arbitrary magnetic fields in the *magneticFields* module (see example04).
 
@@ -121,5 +121,6 @@ In this section some thoughts on future developments and plans are given. We wou
 
 1. Include the generation of seed electrons by residual gas ionization, synchrotron radiation and beam losses. The problem here is that it is hard to do general models which are more than usable for just one specific scenario.
 2. The coupling to PyORBIT already exists, but in a rather simple and unflexible form. The goal is to have several different coupling possiblities, e.g. up to a self-consistant one.
-3. Already existing but not but in a publically usable form is the calculation of microwave transmission. This can be done with rather easy models and on-the-fly during buildup simulations.
+3. Already existing but not but in a publically usable form is the calculation of microwave transmission. This can be done with rather easy models (dielectric model for plasma and 2D) and on-the-fly during buildup simulations.
+4. Include arbitrary staircase boundary for comparison with cut-cell one.
 
