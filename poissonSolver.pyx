@@ -4,7 +4,7 @@ cimport grid
 import scipy.sparse as spsp
 import scipy.sparse.linalg as spspl
 from constants cimport *
-
+import timeit
 
 
 '''
@@ -52,7 +52,7 @@ cdef class PoissonSolver:
         
         # System matrix. Grid points with fixed potential are removed, as they are not needed.
         # The LU decomposition needs a spare matrix in the csc format.
-        a = st.dot(spsp.diags(meps,0).dot(st.transpose()))[self.insidePointsInd[:,numpy.newaxis],self.insidePointsInd].tocsc()
+        a = st.dot(spsp.diags(meps,0).dot(st.transpose()))[:,self.insidePointsInd].tocsc()[self.insidePointsInd,:]
 
         # LU decomposition. Uses the SuperLU library. Parameters set for a diagonal dominant and symmetric (both
         # approximately) matrix. 
