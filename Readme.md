@@ -23,8 +23,7 @@ New Changes
 Curent Issues
 ---------
 
-- On some platforms the Poisson solver crashes in some cases at the construction of the system matrix. There is a problem with the scipy sparse matrices.
-
+- None known.
 
 
 Module Descriptions
@@ -80,6 +79,10 @@ Module to store and provide global constants like the speed of light.
 ### plot
 
 Some plot routines.
+
+### util
+
+Some utility functions.
 
 
 
