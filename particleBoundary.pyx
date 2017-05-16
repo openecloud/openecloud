@@ -413,6 +413,7 @@ cdef class AbsorbArbitraryCutCell(ParticleBoundary):
             stopFlag = 0
             for kk in xDir:
                 for mm in yDir:
+#                    print mm, kk, xDir, yDir
                     currentInCell = inCell + kk + mm*nx
                     if insideFaces[currentInCell] != 0 and insideFaces[currentInCell] != 8:
                         sx = boundaryPoints[2*cutCellPointsInd[2*currentInCell+1]] - \
@@ -436,7 +437,9 @@ cdef class AbsorbArbitraryCutCell(ParticleBoundary):
             if stopFlag == 1:
                 continue
             # Correct cell not found.
-            print 'WARNING: Correct boundary not found. Reduce time step! Particles should not cross more than one cell.'
+            print 'WARNING: Correct boundary not found. Reduce time step! Particles should not cross more than one cell. ' + \
+                  'Location of particle in cell ' + str(inCell) + ' at (' + str(absorbedParticles[nCoords*ii]) + \
+                  ',' + str(absorbedParticles[nCoords*ii+1]) + ').'
             
  
     cpdef object calculateNormalVectors(AbsorbArbitraryCutCell self):       

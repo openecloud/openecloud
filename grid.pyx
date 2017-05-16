@@ -673,10 +673,13 @@ cdef class Grid:
             for ii in range(1,nx-2):
                 insideFaces[ii+jj*nx] = insideEdges[ii+jj*nx] + insideEdges[ii+(jj+1)*nx] + \
                                         insideEdges[ii+jj*nx+np] + insideEdges[ii+1+jj*nx+np]
+                                        
         # Save indices of moved grid points due to cut-cell for particle boundary later.
+        # TODO There might be a bug here, because particleBoundary sometimes messes up.
         self.cutCellPointsInd = numpy.zeros((np,2), dtype=numpy.uintc)
         cutCellPointsInd = &self.cutCellPointsInd[0,0]           
         for ii in range(nBoundaryPoints):
+#        for ii in range(2*nBoundaryPoints):
             if boundaryPointsInd[ii]>=np:
                 currentInd = boundaryPointsInd[ii]-np
                 if insideEdges[currentInd+np]==1:              
@@ -688,7 +691,7 @@ cdef class Grid:
                         cutCellPointsInd[2*(currentInd-1)] = ii
                     else:
                         cutCellPointsInd[2*(currentInd-1)+1] = ii 
-                else:
+                if insideEdges[currentInd+np-nx]==1:
                     if cutCellPointsInd[2*(currentInd-nx)]==0:
                         cutCellPointsInd[2*(currentInd-nx)] = ii
                     else:
@@ -708,7 +711,7 @@ cdef class Grid:
                         cutCellPointsInd[2*(currentInd-nx)] = ii
                     else:
                         cutCellPointsInd[2*(currentInd-nx)+1] = ii 
-                else:
+                if insideEdges[currentInd-1]==1:
                     if cutCellPointsInd[2*(currentInd-1)]==0:
                         cutCellPointsInd[2*(currentInd-1)] = ii
                     else:
