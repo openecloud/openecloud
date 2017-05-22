@@ -9,7 +9,7 @@ cdef class Grid:
         double[:] ds, dsi, da, dai, dst, dsti, dat, dati
         double[:,:] boundaryPoints
         unsigned int[:] boundaryPointsInd
-        unsigned int[:,:] cutCellPointsInd
+        int[:,:] cutCellPointsInd
         double[:,:] cutCellCenter
         double[:,:] cutCellNormalVectors
         unsigned short[:] insidePoints, insideEdges, insideFaces 
@@ -37,7 +37,7 @@ cdef class Grid:
     cpdef unsigned int getNpExt(Grid self)
     cpdef double[:,:] getBoundaryPoints(Grid self)
     cpdef unsigned int[:] getBoundaryPointsInd(Grid self)
-    cpdef unsigned int[:,:] getCutCellPointsInd(Grid self)
+    cpdef int[:,:] getCutCellPointsInd(Grid self)
     cpdef object getBoundFunc(Grid self)
     cpdef unsigned short[:] getInsideFaces(Grid self)
     cpdef unsigned int[:] getInCell(Grid self)

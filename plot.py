@@ -283,7 +283,7 @@ def plotEnergyLocal(gridObj, particlesObj, figObj = None, subPlot = None, show =
     if show:
         mpl.show(block=False)
         
-def plotMesh(gridObj):
+def plotMesh(gridObj, figObj = None, subPlot = None, show = False):
     nx = gridObj.getNxExt()
     ny = gridObj.getNyExt()
     np = gridObj.getNpExt()
@@ -365,12 +365,21 @@ def plotMesh(gridObj):
                     x4.append(None)
                     y4.extend([yMesh[jj+1]-ds[ii+jj*nx+np],yMesh[jj]])
                     y4.append(None) 
-    
-    mpl.plot(x1,y1,'y:')
-    mpl.plot(x2,y2,'k')                
-    mpl.plot(x3,y3,'r')
-    mpl.plot(x4,y4,'g:')
-    mpl.plot(boundaryPoints[:,0],boundaryPoints[:,1], 'b--')
-    mpl.plot([boundaryPoints[0,0],boundaryPoints[-1,0]],[boundaryPoints[0,1],boundaryPoints[-1,1]], 'b--')   
-    mpl.xlim([-lx/2.,lx/2.]) 
-    mpl.ylim([-ly/2.,ly/2.])             
+
+    if figObj == None:
+        figObj = mpl.figure()
+    if subPlot == None:
+        figObj.clf()
+        subPlot = figObj.add_subplot(111)
+        
+    subPlot.plot(x1,y1,'y:')
+    subPlot.plot(x2,y2,'k')                
+    subPlot.plot(x3,y3,'r')
+    subPlot.plot(x4,y4,'g:')
+    subPlot.scatter(boundaryPoints[:,0],boundaryPoints[:,1], s=30, c='b', marker='.')
+#    mpl.plot(boundaryPoints[:,0],boundaryPoints[:,1], 'b--')
+#    mpl.plot([boundaryPoints[0,0],boundaryPoints[-1,0]],[boundaryPoints[0,1],boundaryPoints[-1,1]], 'b--') 
+    subPlot.set_ylim([-ly/2.,ly/2.])
+    subPlot.set_xlim([-lx/2.,lx/2.])  
+#    subPlot.xlim([-lx/2.,lx/2.]) 
+#    subPlot.ylim([-ly/2.,ly/2.])             

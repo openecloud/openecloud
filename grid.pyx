@@ -13,7 +13,10 @@ from constants cimport *
 cdef extern from "math.h":
     double sin(double x) nogil     
     double cos(double x) nogil
+    double asin(double x) nogil     
+    double acos(double x) nogil
     double atan(double x) nogil
+    double atan2(double x, double y) nogil
     double sqrt(double x) nogil
     double log2(double x) nogil
 
@@ -41,7 +44,7 @@ cdef class Grid:
                                        
     '''   
     def __init__(Grid self, unsigned int nx, unsigned int ny, double lx, double ly, 
-                 unsigned short boundType, object boundFunc = None, double cutCellAcc = 1e-12, double scanAroundPoint = 1e-3):
+                 unsigned short boundType, object boundFunc = None, double cutCellAcc = 1e-12, double scanAroundPoint = 1.e-3):
 
         # Calculate and store basic parameters of the uniform grid. For cut-cell some accuracy parameters.
         self.nx = nx
@@ -426,7 +429,7 @@ cdef class Grid:
             double* xMesh = &self.xMesh[0]
             double* yMesh = &self.yMesh[0]
             double* boundaryPoints
-            unsigned int* cutCellPointsInd
+            int* cutCellPointsInd
             unsigned int* boundaryPointsInd
             unsigned int nBoundaryPoints
             double* cutCellCenter
@@ -528,88 +531,98 @@ cdef class Grid:
         
         for jj in range(2,ny-2):
             for ii in range(1,nx-2): 
-                if insideEdges[ii+jj*nx]==2:
-                    ds[ii+jj*nx] = dx                                   # Only equidistant (in each direction) grid here.
-                    dsi[ii+jj*nx] = dxi
-                elif insideEdges[ii+jj*nx]==0:
-                    ds[ii+jj*nx] = 0.
-                    dsi[ii+jj*nx] = 0.
+                currentInd = ii+jj*nx
+                if insideEdges[currentInd]==2:
+                    ds[currentInd] = dx                                   # Only equidistant (in each direction) grid here.
+                    dsi[currentInd] = dxi
+                elif insideEdges[currentInd]==0:
+                    ds[currentInd] = 0.
+                    dsi[currentInd] = 0.
                 else:   
                     # Cut-cell edge.
                     # Bisect repeatedly the possible cut cell edges to get length of each. 
-                    x1 = xMesh[ii]-5.*dxMin
-                    x2 = xMesh[ii+1]+5.*dxMin
+                    x1 = xMesh[ii]#-5.*dxMin
+                    x2 = xMesh[ii+1]#+5.*dxMin
                     y = yMesh[jj]
                     test01 = boundFunc(x1,y)
                     test02 = boundFunc(x2,y)
-                    test03 = boundFunc(x3,y)
-                    if test01 == 1 and test02 == 1 and test03 == 1:
-                        ds[ii+jj*nx] = dx
+#                    test03 = boundFunc(x3,y)
+                    if test01 == 1 and test02 == 1:# and test03 == 1:
+                        ds[currentInd] = dx
                     else:
                         for kk in range(boundAccIter):
                             x3 = 0.5*(x1+x2)
-                            test01 = boundFunc(x1,y)
-                            test02 = boundFunc(x2,y)
+#                            test01 = boundFunc(x1,y)
+#                            test02 = boundFunc(x2,y)
                             test03 = boundFunc(x3,y)
                             if test01==test03:
                                 x1 = x3
+                                test01 = test03
                             else:
                                 x2 = x3
-                        if insidePoints[ii+jj*nx]==1:
-                            ds[ii+jj*nx] = 0.5*(x1+x2) - xMesh[ii]
+                                test02 = test03
+                        if insidePoints[currentInd]==1:
+                            ds[currentInd] = 0.5*(x1+x2) - xMesh[ii]
                         else:
-                            ds[ii+jj*nx] = xMesh[ii+1] - 0.5*(x1+x2)    
-                    dsi[ii+jj*nx] = 1./ds[ii+jj*nx]
+                            ds[currentInd] = xMesh[ii+1] - 0.5*(x1+x2)    
+                    dsi[currentInd] = 1./ds[currentInd]
                         
         # Same stuff as above, only for y-edges.                        
         for jj in range(1,ny-2):
             for ii in range(2,nx-2): 
-                if insideEdges[ii+jj*nx+np]==2:
-                    ds[ii+jj*nx+np] = dy                                   # Only equidistant (in each direction) grid here.
-                    dsi[ii+jj*nx+np] = dyi
-                elif insideEdges[ii+jj*nx+np]==0:
-                    ds[ii+jj*nx+np] = 0.
-                    dsi[ii+jj*nx+np] = 0.
+                currentInd = ii+jj*nx
+                if insideEdges[currentInd+np]==2:
+                    ds[currentInd+np] = dy                                   # Only equidistant (in each direction) grid here.
+                    dsi[currentInd+np] = dyi
+                elif insideEdges[currentInd+np]==0:
+                    ds[currentInd+np] = 0.
+                    dsi[currentInd+np] = 0.
                 else:   
                     # Cut-cell edge.
                     # Bisect repeatedly the possible cut cell edges to get length of each. 
-                    y1 = yMesh[jj]-5.*dyMin
-                    y2 = yMesh[jj+1]+5.*dyMin
+                    y1 = yMesh[jj]#-5.*dyMin
+                    y2 = yMesh[jj+1]#+5.*dyMin
                     x = xMesh[ii]
                     test01 = boundFunc(x,y1)
                     test02 = boundFunc(x,y2)
-                    test03 = boundFunc(x,y3)
-                    if test01 == 1 and test02 == 1 and test03 == 1:
-                        ds[ii+jj*nx+np] = dy    
+#                    test03 = boundFunc(x,y3)
+                    if test01 == 1 and test02 == 1:# and test03 == 1:
+                        ds[currentInd+np] = dy    
                     else:
                         for kk in range(boundAccIter):
                             y3 = 0.5*(y1+y2)
-                            test01 = boundFunc(x,y1)
-                            test02 = boundFunc(x,y2)
+#                            test01 = boundFunc(x,y1)
+#                            test02 = boundFunc(x,y2)
                             test03 = boundFunc(x,y3)
                             if test01==test03:
                                 y1 = y3
+                                test01 = test03
                             else:
                                 y2 = y3
-                        if insidePoints[ii+jj*nx]==1:
-                            ds[ii+jj*nx+np] = 0.5*(y1+y2) - yMesh[jj]
+                                test02 = test03
+                        if insidePoints[currentInd]==1:
+                            ds[currentInd+np] = 0.5*(y1+y2) - yMesh[jj]
                         else:
-                            ds[ii+jj*nx+np] = yMesh[jj+1] - 0.5*(y1+y2)    
-                    dsi[ii+jj*nx+np] = 1./ds[ii+jj*nx+np]                        
+                            ds[currentInd+np] = yMesh[jj+1] - 0.5*(y1+y2)    
+                    dsi[currentInd+np] = 1./ds[currentInd+np]                        
        
 
         # Determination of boundary points.
+        # And save indices of moved grid points due to cut-cell for particle boundary later.
         nBoundaryPoints = 0
         for jj in range(1,ny-1):
             for ii in range(1,nx-1):
-                if insideEdges[ii+jj*nx]==1:
+                currentInd = ii+jj*nx
+                if insideEdges[currentInd]==1:
                     nBoundaryPoints += 1
-                if insideEdges[ii+jj*nx+np]==1:
+                if insideEdges[currentInd+np]==1:
                     nBoundaryPoints += 1
         self.boundaryPoints = numpy.empty((nBoundaryPoints,2), dtype=numpy.double)
-        self.boundaryPointsInd = numpy.empty(nBoundaryPoints, dtype=numpy.uintc) 
         boundaryPoints = &self.boundaryPoints[0,0]
+        self.boundaryPointsInd = numpy.empty(nBoundaryPoints, dtype=numpy.uintc) 
         boundaryPointsInd = &self.boundaryPointsInd[0]
+        self.cutCellPointsInd = -numpy.ones((np,2), dtype=numpy.intc)
+        cutCellPointsInd = &self.cutCellPointsInd[0,0] 
         kk = 0
         for jj in range(1,ny-1):
             for ii in range(1,nx-1):
@@ -619,46 +632,44 @@ cdef class Grid:
                         boundaryPoints[2*kk] = xMesh[ii] + ds[currentInd]
                         boundaryPoints[2*kk+1] = yMesh[jj]
                         boundaryPointsInd[kk] = currentInd+1
-                        kk += 1
                     else:
                         boundaryPoints[2*kk] = xMesh[ii+1] - ds[currentInd]
                         boundaryPoints[2*kk+1] = yMesh[jj]
                         boundaryPointsInd[kk] = currentInd
-                        kk += 1
+                    if cutCellPointsInd[2*currentInd]==-1:
+                        cutCellPointsInd[2*currentInd] = kk
+                    else:
+                        cutCellPointsInd[2*currentInd+1] = kk
+                    if cutCellPointsInd[2*(currentInd-nx)]==-1:
+                        cutCellPointsInd[2*(currentInd-nx)] = kk
+                    else:
+                        cutCellPointsInd[2*(currentInd-nx)+1] = kk
+#                    print '--- x ---'
+#                    print kk, ii, jj, boundaryPoints[2*kk], boundaryPoints[2*kk+1], boundaryPointsInd[kk]
+#                    print cutCellPointsInd[2*currentInd], cutCellPointsInd[2*currentInd+1],cutCellPointsInd[2*(currentInd-nx)], cutCellPointsInd[2*(currentInd-nx)+1]
+                    kk += 1
                 if insideEdges[currentInd+np]==1:
                     if insidePoints[currentInd]==1:
                         boundaryPoints[2*kk] = xMesh[ii]
                         boundaryPoints[2*kk+1] = yMesh[jj] + ds[currentInd+np]
                         boundaryPointsInd[kk] = currentInd+nx+np
-                        kk += 1
                     else:
                         boundaryPoints[2*kk] = xMesh[ii]
                         boundaryPoints[2*kk+1] = yMesh[jj+1] - ds[currentInd+np]
                         boundaryPointsInd[kk] = currentInd+np
-                        kk += 1
+                    if cutCellPointsInd[2*currentInd]==-1:
+                        cutCellPointsInd[2*currentInd] = kk
+                    else:
+                        cutCellPointsInd[2*currentInd+1] = kk
+                    if cutCellPointsInd[2*(currentInd-1)]==-1:
+                        cutCellPointsInd[2*(currentInd-1)] = kk
+                    else:
+                        cutCellPointsInd[2*(currentInd-1)+1] = kk
+#                    print '--- y ---'
+#                    print kk, ii, jj, boundaryPoints[2*kk], boundaryPoints[2*kk+1], boundaryPointsInd[kk]
+#                    print cutCellPointsInd[2*currentInd], cutCellPointsInd[2*currentInd+1],cutCellPointsInd[2*(currentInd-1)], cutCellPointsInd[2*(currentInd-1)+1]
+                    kk += 1
         
-        # Sorting boundary points is only needed for plotting. Screws up for wild geometries. 
-        # As said, only used for plotting thus not too important if that happens.  
-        kk = 1
-        while kk<nBoundaryPoints:
-            bestDist = doubleMaxVal
-            for ii in range(kk,nBoundaryPoints):
-                if bestDist > ((boundaryPoints[2*ii]-boundaryPoints[2*(kk-1)])**2 + 
-                               (boundaryPoints[2*ii+1]-boundaryPoints[2*(kk-1)+1])**2):
-                    bestInd = ii
-                    bestDist = ((boundaryPoints[2*ii]-boundaryPoints[2*(kk-1)])**2 + 
-                                (boundaryPoints[2*ii+1]-boundaryPoints[2*(kk-1)+1])**2)
-            tempuint = boundaryPointsInd[kk]
-            boundaryPointsInd[kk] = boundaryPointsInd[bestInd]
-            boundaryPointsInd[bestInd] = tempuint 
-            tempdouble = boundaryPoints[2*kk]
-            boundaryPoints[2*kk] = boundaryPoints[2*bestInd]
-            boundaryPoints[2*bestInd] = tempdouble 
-            tempdouble = boundaryPoints[2*kk+1]
-            boundaryPoints[2*kk+1] = boundaryPoints[2*bestInd+1]
-            boundaryPoints[2*bestInd+1] = tempdouble            
-            kk += 1
-
         # Calculation of faces. Primary grid. Linear approximation.
         # Note that these are not used for any essential calculation if a Poisson solver is used.      
         for ii in range(nx):
@@ -673,53 +684,7 @@ cdef class Grid:
             for ii in range(1,nx-2):
                 insideFaces[ii+jj*nx] = insideEdges[ii+jj*nx] + insideEdges[ii+(jj+1)*nx] + \
                                         insideEdges[ii+jj*nx+np] + insideEdges[ii+1+jj*nx+np]
-                                        
-        # Save indices of moved grid points due to cut-cell for particle boundary later.
-        # TODO There might be a bug here, because particleBoundary sometimes messes up.
-        self.cutCellPointsInd = numpy.zeros((np,2), dtype=numpy.uintc)
-        cutCellPointsInd = &self.cutCellPointsInd[0,0]           
-        for ii in range(nBoundaryPoints):
-#        for ii in range(2*nBoundaryPoints):
-            if boundaryPointsInd[ii]>=np:
-                currentInd = boundaryPointsInd[ii]-np
-                if insideEdges[currentInd+np]==1:              
-                    if cutCellPointsInd[2*currentInd]==0:
-                        cutCellPointsInd[2*currentInd] = ii
-                    else:
-                        cutCellPointsInd[2*currentInd+1] = ii
-                    if cutCellPointsInd[2*(currentInd-1)]==0:
-                        cutCellPointsInd[2*(currentInd-1)] = ii
-                    else:
-                        cutCellPointsInd[2*(currentInd-1)+1] = ii 
-                if insideEdges[currentInd+np-nx]==1:
-                    if cutCellPointsInd[2*(currentInd-nx)]==0:
-                        cutCellPointsInd[2*(currentInd-nx)] = ii
-                    else:
-                        cutCellPointsInd[2*(currentInd-nx)+1] = ii    
-                    if cutCellPointsInd[2*(currentInd-nx-1)]==0:        
-                        cutCellPointsInd[2*(currentInd-nx-1)] = ii  
-                    else:
-                        cutCellPointsInd[2*(currentInd-nx-1)+1] = ii      
-            else:
-                currentInd = boundaryPointsInd[ii]
-                if insideEdges[currentInd]==1:              
-                    if cutCellPointsInd[2*currentInd]==0:
-                        cutCellPointsInd[2*currentInd] = ii
-                    else:
-                        cutCellPointsInd[2*currentInd+1] = ii
-                    if cutCellPointsInd[2*(currentInd-nx)]==0:
-                        cutCellPointsInd[2*(currentInd-nx)] = ii
-                    else:
-                        cutCellPointsInd[2*(currentInd-nx)+1] = ii 
-                if insideEdges[currentInd-1]==1:
-                    if cutCellPointsInd[2*(currentInd-1)]==0:
-                        cutCellPointsInd[2*(currentInd-1)] = ii
-                    else:
-                        cutCellPointsInd[2*(currentInd-1)+1] = ii
-                    if cutCellPointsInd[2*(currentInd-1-nx)]==0:
-                        cutCellPointsInd[2*(currentInd-1-nx)] = ii
-                    else:
-                        cutCellPointsInd[2*(currentInd-1-nx)+1] = ii    
+        
         # Sort boundary points of each cell such that counter-clockwise.
         self.cutCellCenter = numpy.zeros((np,2), dtype=numpy.double)
         cutCellCenter = &self.cutCellCenter[0,0] 
@@ -775,6 +740,7 @@ cdef class Grid:
                         tempuint = cutCellPointsInd[2*currentInd]
                         cutCellPointsInd[2*currentInd] = cutCellPointsInd[2*currentInd+1]
                         cutCellPointsInd[2*currentInd+1] = tempuint
+                                                    
         # Cut-cell normal vectors.
         self.cutCellNormalVectors = numpy.zeros((np,2), dtype=numpy.double)
         cutCellNormalVectors = &self.cutCellNormalVectors[0,0]
@@ -782,11 +748,14 @@ cdef class Grid:
             for ii in range(1,nx-1):
                 currentInd = ii + jj*nx
                 if insideFaces[currentInd] != 0 and insideFaces[currentInd] != 8:
-                    cutCellNormalVectors[2*currentInd] = boundaryPoints[2*cutCellPointsInd[2*currentInd]+1] - boundaryPoints[2*cutCellPointsInd[2*currentInd+1]+1]  # TODO CHECK
-                    cutCellNormalVectors[2*currentInd+1] = boundaryPoints[2*cutCellPointsInd[2*currentInd+1]] - boundaryPoints[2*cutCellPointsInd[2*currentInd]] 
+                    cutCellNormalVectors[2*currentInd] = boundaryPoints[2*cutCellPointsInd[2*currentInd]+1] - \
+                                                         boundaryPoints[2*cutCellPointsInd[2*currentInd+1]+1]  # TODO CHECK
+                    cutCellNormalVectors[2*currentInd+1] = boundaryPoints[2*cutCellPointsInd[2*currentInd+1]] - \
+                                                           boundaryPoints[2*cutCellPointsInd[2*currentInd]] 
                     tempdouble = 1./sqrt(cutCellNormalVectors[2*currentInd]**2 + cutCellNormalVectors[2*currentInd+1]**2)
                     cutCellNormalVectors[2*currentInd] *= tempdouble
                     cutCellNormalVectors[2*currentInd+1] *= tempdouble
+
         # Continue with calculation of faces.
         for ii in range(nx):
             da[ii] = 0.
@@ -835,7 +804,6 @@ cdef class Grid:
                         da[ii+jj*nx] = dxdy-0.5*(dx-ds[ii+(jj+1)*nx])*(dy-ds[ii+1+jj*nx+np])
                     dai[ii+jj*nx] = 1./da[ii+jj*nx]
                     
-
         # Dual grid quantities are not affected by cut-cell stuff. Same as for rectangular. 
         # They are not needed for any essential
         # calculation in the poisson problem, just for visualization of the charge density.
@@ -877,10 +845,10 @@ cdef class Grid:
             dsti[ii+(ny-2)*nx+np] = dyHalfi
         for ii in range(nx):
             for jj in range(ny):
+                # TODO Area calculation could be improved to make plots of cut cells nicer
                 dat[ii+jj*nx] = dst[ii+jj*nx]*dst[ii+jj*nx+np]
                 dati[ii+jj*nx] = dsti[ii+jj*nx]*dsti[ii+jj*nx+np] 
 
-        
         # Standard interpolation stuff. Interpolation from edges to _inside_ grid points. Same as rectangular.         
         kk = 0
         for ii in range(2,nx-2):
@@ -889,7 +857,7 @@ cdef class Grid:
                 if insidePoints[currentInd]==1:
                     rows[kk] = currentInd
                     columns[kk] = currentInd
-                    values[kk] = ds[currentInd]/(ds[currentInd-1]+ds[currentInd])   # Should works for non-equidistant grid.  
+                    values[kk] = ds[currentInd]/(ds[currentInd-1]+ds[currentInd])   # Should work for non-equidistant grid.  
                     kk += 1
                     rows[kk] = currentInd
                     columns[kk] = currentInd-1
@@ -912,12 +880,36 @@ cdef class Grid:
         # Boundary interpolation for correct cut-cell fields at boundary.
         # This is the only really messy and hard part in this whole class. One has to interpolate
         # at the boundary by using the continuity conditions, which leads to lots of angles and so on...
-        # I am very sure that this is correct, other people usually do it wrong! 
-        # There is some stuff included to extrapolate to the equidistant grid, but the last step
-        # will be done in the next block.
-        _calcBoundaryAngles(&cosAlpha[0], &sinAlpha[0], &cosBeta[0], &sinBeta[0], 
-                            insideEdges, insidePoints, xMesh, yMesh, 
-                            boundaryPoints, boundaryPointsInd, nBoundaryPoints, nx, ny, np)       
+        # I am very sure that this is in principle is much better than many other people do it (they just
+        # ignore the cut cells and work on the equidistant mesh). For openEcloud we need good field
+        # interpolation at the wall, so no way around it.
+        # There is some stuff included to extrapolate accurately to the equidistant grid, but the last
+        # step will be done in the next block.
+        for jj in range(1, ny-1):
+            for ii in range(1, nx-1):
+                currentInd = ii+jj*nx
+                if insideEdges[currentInd]==0 or insideEdges[currentInd]==2:
+                    cosAlpha[currentInd] = 0.
+                    sinAlpha[currentInd] = 0.              
+                else:
+#                    temp = 0.5 * ( acos(-cutCellNormalVectors[2*currentInd]) + acos(-cutCellNormalVectors[2*(currentInd-nx)]) )
+                    temp = 0.5 * ( atan2(cutCellNormalVectors[2*currentInd+1],cutCellNormalVectors[2*currentInd]) + 
+                                   atan2(cutCellNormalVectors[2*(currentInd-nx)+1],cutCellNormalVectors[2*(currentInd-nx)]) )
+                    cosAlpha[currentInd] = cos(temp)
+                    sinAlpha[currentInd] = sin(temp)
+#                    print 'sincosalpha', currentInd, temp/pi*180, cosAlpha[currentInd], sinAlpha[currentInd], cosAlpha[currentInd]**2+sinAlpha[currentInd]**2
+#                    print atan2(cutCellNormalVectors[2*currentInd+1],cutCellNormalVectors[2*currentInd])/pi*180, atan2(cutCellNormalVectors[2*(currentInd-nx)+1],cutCellNormalVectors[2*(currentInd-nx)])/pi*180
+                if insideEdges[currentInd+np]==0 or insideEdges[currentInd+np]==2:
+                    cosBeta[currentInd] = 0.
+                    sinBeta[currentInd] = 0.
+                else:
+#                    temp = 0.5 * ( acos(-cutCellNormalVectors[2*currentInd+1]) + acos(-cutCellNormalVectors[2*(currentInd-1)+1]) )
+                    temp = 0.5 * ( atan2(-cutCellNormalVectors[2*currentInd],cutCellNormalVectors[2*currentInd+1]) + 
+                                   atan2(-cutCellNormalVectors[2*(currentInd-1)],cutCellNormalVectors[2*(currentInd-1)+1]) )
+                    cosBeta[currentInd] = cos(temp)
+                    sinBeta[currentInd] = sin(temp)
+#                    print 'sincosbeta', currentInd, temp/pi*180, cosBeta[currentInd], sinBeta[currentInd], cosBeta[currentInd]**2+sinBeta[currentInd]**2
+#                    print atan2(-cutCellNormalVectors[2*currentInd],cutCellNormalVectors[2*currentInd+1])/pi*180, atan2(-cutCellNormalVectors[2*(currentInd-1)],cutCellNormalVectors[2*(currentInd-1)+1])/pi*180
         for ii in range(nx):
             connectedEdgesInv[ii] = 0.
             connectedEdgesInv[ii+nx] = 0.          
@@ -1120,8 +1112,8 @@ cdef class Grid:
                         kk += 1
      
 
-        self.edgeToNode = spsp.csc_matrix(spsp.coo_matrix((values[:kk],(rows[:kk],columns[:kk])),shape=(2*np,2*np))
-                                          ).dot(self.edgeToNode)  
+#        self.edgeToNode = spsp.csc_matrix(spsp.coo_matrix((values[:kk],(rows[:kk],columns[:kk])),shape=(2*np,2*np))
+#                                          ).dot(self.edgeToNode)  
     
     '''
     Getter functions from here on.
@@ -1177,7 +1169,7 @@ cdef class Grid:
     cpdef unsigned int[:] getBoundaryPointsInd(Grid self):
         return self.boundaryPointsInd
             
-    cpdef unsigned int[:,:] getCutCellPointsInd(Grid self):
+    cpdef int[:,:] getCutCellPointsInd(Grid self):
         return self.cutCellPointsInd
     
     cpdef double[:,:] getCutCellCenter(Grid self):
@@ -1239,78 +1231,5 @@ cpdef unsigned short _boundFuncElliptical(double x, double y, double aSqInv, dou
         return 0    
 
 
-cdef void _calcBoundaryAngles(double* cosAlpha, double* sinAlpha, double* cosBeta, double* sinBeta, 
-                              unsigned short* insideEdges, unsigned short* insidePoints, double* xMesh, double* yMesh, 
-                              double* boundaryPoints, unsigned int* boundaryPointsInd, unsigned int nBoundaryPoints,
-                              unsigned int nx, unsigned int ny, unsigned int np):
-    cdef:
-        unsigned int ii, jj, currentInd
-        double u1, u2, u3, v1, v2, v3
-        double A, B, denomi, angle
-        double temp    
-    for jj in range(ny):
-        for ii in range(nx):
-            currentInd = ii+jj*nx
-            if insideEdges[currentInd]==0 or insideEdges[currentInd]==2:
-                cosAlpha[currentInd] = 0.
-                sinAlpha[currentInd] = 0.              
-            else:
-                if insidePoints[currentInd]==0:
-                    searchInd = currentInd
-                else:
-                    searchInd = currentInd + 1
-                for kk in range(nBoundaryPoints):
-                    if boundaryPointsInd[kk]==searchInd:
-                        break
-                u2 = boundaryPoints[2*kk]
-                v2 = boundaryPoints[2*kk+1]
-                if kk==0:
-                    u1 = boundaryPoints[2*(nBoundaryPoints-1)]
-                    v1 = boundaryPoints[2*(nBoundaryPoints-1)+1]     
-                else:
-                    u1 = boundaryPoints[2*(kk-1)]
-                    v1 = boundaryPoints[2*(kk-1)+1]      
-                if kk==nBoundaryPoints-1:
-                    u3 = boundaryPoints[0]
-                    v3 = boundaryPoints[1]     
-                else:
-                    u3 = boundaryPoints[2*(kk+1)]
-                    v3 = boundaryPoints[2*(kk+1)+1]       
-                denomi = 1./((v1-v2)*(v1-v3)*(v2-v3))
-                A = (v3*(u2-u1) + v2*(u1-u3) + v1*(u3-u2))*denomi
-                B = (v3**2*(u1-u2) + v2**2*(u3-u1) + v1**2*(u2-u3))*denomi                                               
-                angle = atan(2*A*v2+B)
-                cosAlpha[currentInd] = cos(angle)
-                sinAlpha[currentInd] = sin(angle)
-            if insideEdges[currentInd+np]==0 or insideEdges[currentInd+np]==2:
-                cosBeta[currentInd] = 0.
-                sinBeta[currentInd] = 0.
-            else:    
-                if insidePoints[currentInd]==0:
-                    searchInd = currentInd + np
-                else:
-                    searchInd = currentInd + np + nx
-                for kk in range(nBoundaryPoints):
-                    if boundaryPointsInd[kk]==searchInd:
-                        break
-                u2 = boundaryPoints[2*kk]
-                v2 = boundaryPoints[2*kk+1]
-                if kk==0:
-                    u1 = boundaryPoints[2*(nBoundaryPoints-1)]
-                    v1 = boundaryPoints[2*(nBoundaryPoints-1)+1]     
-                else:
-                    u1 = boundaryPoints[2*(kk-1)]
-                    v1 = boundaryPoints[2*(kk-1)+1]      
-                if kk==nBoundaryPoints-1:
-                    u3 = boundaryPoints[0]
-                    v3 = boundaryPoints[1]     
-                else:
-                    u3 = boundaryPoints[2*(kk+1)]
-                    v3 = boundaryPoints[2*(kk+1)+1]                                                      
-                denomi = 1/((u1-u2)*(u1-u3)*(u2-u3))                        # Parabolic approximation of boundary.
-                A = (u3*(v2-v1) + u2*(v1-v3) + u1*(v3-v2))*denomi           # Not a spline! Just three points.
-                B = (u3**2*(v1-v2) + u2**2*(v3-v1) + u1**2*(v2-v3))*denomi                
-                angle = atan(2*A*u2+B)
-                cosBeta[currentInd] = cos(angle)
-                sinBeta[currentInd] = sin(angle)
+
 

@@ -305,7 +305,7 @@ cdef class AbsorbArbitraryCutCell(ParticleBoundary):
         cdef:
             unsigned short *insideFaces = &self.gridObj.getInsideFaces()[0]
             double *boundaryPoints = &self.gridObj.getBoundaryPoints()[0,0]
-            unsigned int *cutCellPointsInd = &self.gridObj.getCutCellPointsInd()[0,0]
+            int *cutCellPointsInd = &self.gridObj.getCutCellPointsInd()[0,0]
             double lxHalf = 0.5*self.gridObj.getLxExt(), lyHalf = 0.5*self.gridObj.getLyExt()
             double dxi = 1./self.gridObj.getDx(), dyi = 1./self.gridObj.getDy() 
             unsigned int nx = self.gridObj.getNxExt()        
@@ -337,7 +337,7 @@ cdef class AbsorbArbitraryCutCell(ParticleBoundary):
             unsigned short *isInside = &self.particlesObj.getIsInside()[0]
             unsigned short *insideFaces = &self.gridObj.getInsideFaces()[0]
             double *boundaryPoints = &self.gridObj.getBoundaryPoints()[0,0]
-            unsigned int *cutCellPointsInd = &self.gridObj.getCutCellPointsInd()[0,0]
+            int *cutCellPointsInd = &self.gridObj.getCutCellPointsInd()[0,0]
             unsigned int macroParticleCount = self.particlesObj.getMacroParticleCount()
             unsigned int nCoords = self.particlesObj.getNCoords()   
             double lxHalf = 0.5*self.gridObj.getLxExt(), lyHalf = 0.5*self.gridObj.getLyExt()
@@ -346,9 +346,9 @@ cdef class AbsorbArbitraryCutCell(ParticleBoundary):
             unsigned int ii, indx, indy
             unsigned int inCell
 
-#        # First clip particles to grid. This is a fail safe and should be avoided by small enough time steps!
-#        _clipParticleDataToGrid(particleData, macroParticleCount, nCoords, 
-#                                lxHalf - 1.e-6*self.gridObj.getDx(), lyHalf - 1.e-6*self.gridObj.getDy())
+        # First clip particles to grid. This is a fail safe and should be avoided by small enough time steps!
+        _clipParticleDataToGrid(particleData, macroParticleCount, nCoords, 
+                                lxHalf - 1.e-6*self.gridObj.getDx(), lyHalf - 1.e-6*self.gridObj.getDy())
                                 
         for ii in range(macroParticleCount):
             indx = <unsigned int> ( (particleData[nCoords*ii]+lxHalf)*dxi )
@@ -374,7 +374,7 @@ cdef class AbsorbArbitraryCutCell(ParticleBoundary):
         cdef:
             double *absorbedParticles = &self.absorbedParticles[0,0]
             double *boundaryPoints = &self.gridObj.getBoundaryPoints()[0,0]
-            unsigned int *cutCellPointsInd = &self.gridObj.getCutCellPointsInd()[0,0]
+            int *cutCellPointsInd = &self.gridObj.getCutCellPointsInd()[0,0]
             unsigned short *insideFaces = &self.gridObj.getInsideFaces()[0]
             unsigned int nCoords = self.particlesObj.getNCoords()       
             unsigned int nx = self.gridObj.getNxExt()
@@ -387,6 +387,7 @@ cdef class AbsorbArbitraryCutCell(ParticleBoundary):
             int xDir[2]
             int yDir[2]
             double* remainingTimeStep
+            double safetyEps = 1.e-6            # relative safety margin for some calculations
         
         if self.absorbedMacroParticleCount > self.remainingTimeStep.shape[0]:
             self.remainingTimeStep = numpy.empty(<unsigned int> (self.absorbedMacroParticleCount*1.1), dtype=numpy.double)  
@@ -416,8 +417,10 @@ cdef class AbsorbArbitraryCutCell(ParticleBoundary):
 #                    print mm, kk, xDir, yDir
                     currentInCell = inCell + kk + mm*nx
                     if insideFaces[currentInCell] != 0 and insideFaces[currentInCell] != 8:
+#                        sx = boundaryPoints[2*cutCellPointsInd[2*currentInCell+1]] - \
                         sx = boundaryPoints[2*cutCellPointsInd[2*currentInCell+1]] - \
                              boundaryPoints[2*cutCellPointsInd[2*currentInCell]]
+#                        sy = boundaryPoints[2*cutCellPointsInd[2*currentInCell+1]+1] - \
                         sy = boundaryPoints[2*cutCellPointsInd[2*currentInCell+1]+1] - \
                              boundaryPoints[2*cutCellPointsInd[2*currentInCell]+1]
                         rCrossS = rx*sy - ry*sx
@@ -426,10 +429,10 @@ cdef class AbsorbArbitraryCutCell(ParticleBoundary):
                             qmpy = boundaryPoints[2*cutCellPointsInd[2*currentInCell]+1] - absorbedParticles[nCoords*ii+1]
                             t = (qmpx*sy - qmpy*sx)/rCrossS
                             u = (qmpx*ry - qmpy*rx)/rCrossS
-                            if 0. <= t and t <= 1. and 0. <= u and u <= 1.:
-                                absorbedParticles[nCoords*ii] += t*rx*(1.+1.e-3)             # Some safety margin.
-                                absorbedParticles[nCoords*ii+1] += t*ry*(1.+1.e-3)           # Some safety margin.
-                                remainingTimeStep[ii] = t*(1.+1.e-3)*dt  
+                            if -safetyEps <= t and t <= 1.+safetyEps and -safetyEps <= u and u <= 1.+safetyEps:
+                                absorbedParticles[nCoords*ii] += t*rx*(1.+safetyEps)
+                                absorbedParticles[nCoords*ii+1] += t*ry*(1.+safetyEps)
+                                remainingTimeStep[ii] = t*(1.+safetyEps)*dt  
                                 stopFlag = 1
                                 break
                 if stopFlag == 1:
@@ -438,8 +441,20 @@ cdef class AbsorbArbitraryCutCell(ParticleBoundary):
                 continue
             # Correct cell not found.
             print 'WARNING: Correct boundary not found. Reduce time step! Particles should not cross more than one cell. ' + \
-                  'Location of particle in cell ' + str(inCell) + ' at (' + str(absorbedParticles[nCoords*ii]) + \
-                  ',' + str(absorbedParticles[nCoords*ii+1]) + ').'
+                  'Location of particle in cell ' + str(inCell) + ' at: New (' + str(absorbedParticles[nCoords*ii]) + \
+                  ',' + str(absorbedParticles[nCoords*ii+1]) + ') from old ' + \
+                  '(' + str(absorbedParticles[nCoords*ii]+rx) + ',' + str(absorbedParticles[nCoords*ii+1]+ry) + ').'
+#            print inCell, rx, ry 
+#            print insideFaces[inCell], insideFaces[inCell+1], insideFaces[inCell-1],insideFaces[inCell+nx],insideFaces[inCell-nx], \
+#                  insideFaces[inCell+1+nx], insideFaces[inCell-1-nx],insideFaces[inCell+nx-1],insideFaces[inCell-nx+1]
+#            print boundaryPoints[2*cutCellPointsInd[2*(inCell+xDir[0]+nx*yDir[0])]], boundaryPoints[2*cutCellPointsInd[2*(inCell+xDir[0]+nx*yDir[0])+1]]
+#            print boundaryPoints[2*cutCellPointsInd[2*(inCell+xDir[0]+nx*yDir[0])]+1], boundaryPoints[2*cutCellPointsInd[2*(inCell+xDir[0]+nx*yDir[0])+1]+1]
+#            print boundaryPoints[2*cutCellPointsInd[2*(inCell+xDir[1]+nx*yDir[0])]], boundaryPoints[2*cutCellPointsInd[2*(inCell+xDir[1]+nx*yDir[0])+1]]
+#            print boundaryPoints[2*cutCellPointsInd[2*(inCell+xDir[1]+nx*yDir[0])]+1], boundaryPoints[2*cutCellPointsInd[2*(inCell+xDir[1]+nx*yDir[0])+1]+1]
+#            print boundaryPoints[2*cutCellPointsInd[2*(inCell+xDir[0]+nx*yDir[1])]], boundaryPoints[2*cutCellPointsInd[2*(inCell+xDir[0]+nx*yDir[1])+1]]
+#            print boundaryPoints[2*cutCellPointsInd[2*(inCell+xDir[0]+nx*yDir[1])]+1], boundaryPoints[2*cutCellPointsInd[2*(inCell+xDir[0]+nx*yDir[1])+1]+1]
+#            print boundaryPoints[2*cutCellPointsInd[2*(inCell+xDir[1]+nx*yDir[1])]], boundaryPoints[2*cutCellPointsInd[2*(inCell+xDir[1]+nx*yDir[1])+1]]
+#            print boundaryPoints[2*cutCellPointsInd[2*(inCell+xDir[1]+nx*yDir[1])]+1], boundaryPoints[2*cutCellPointsInd[2*(inCell+xDir[1]+nx*yDir[1])+1]+1]
             
  
     cpdef object calculateNormalVectors(AbsorbArbitraryCutCell self):       
@@ -472,16 +487,25 @@ cdef void _clipParticleDataToGrid(double *particleData, unsigned int macroPartic
 
     cdef:
         unsigned int ii
-        
+        unsigned short clipFlag = 0
+    
     for ii in range(macroParticleCount):
         if particleData[nCoords*ii] > lxHalf:
             particleData[nCoords*ii] = lxHalf
+            clipFlag = 1
         elif particleData[nCoords*ii] < -lxHalf:
             particleData[nCoords*ii] = -lxHalf
+            clipFlag = 1
         if particleData[nCoords*ii+1] > lyHalf:
             particleData[nCoords*ii+1] = lyHalf
+            clipFlag = 1
         elif particleData[nCoords*ii+1] < -lyHalf:
             particleData[nCoords*ii+1] = -lyHalf
+            clipFlag = 1
+    
+    with gil:
+        if clipFlag == 1:
+            print 'WARNING: Some particles have been outside of the grid. This should not happen if time step is smal enough.'
 
 
         
