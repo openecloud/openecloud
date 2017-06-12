@@ -541,19 +541,16 @@ cdef class Grid:
                 else:   
                     # Cut-cell edge.
                     # Bisect repeatedly the possible cut cell edges to get length of each. 
-                    x1 = xMesh[ii]#-5.*dxMin
-                    x2 = xMesh[ii+1]#+5.*dxMin
+                    x1 = xMesh[ii]
+                    x2 = xMesh[ii+1]
                     y = yMesh[jj]
                     test01 = boundFunc(x1,y)
                     test02 = boundFunc(x2,y)
-#                    test03 = boundFunc(x3,y)
-                    if test01 == 1 and test02 == 1:# and test03 == 1:
-                        ds[currentInd] = dx
+                    if test01 == 1 and test02 == 1:
+                        ds[currentInd] = dx#(1.-self.scanAroundPoint)*dx           # WORKAROUND. Maybe better possible.
                     else:
                         for kk in range(boundAccIter):
                             x3 = 0.5*(x1+x2)
-#                            test01 = boundFunc(x1,y)
-#                            test02 = boundFunc(x2,y)
                             test03 = boundFunc(x3,y)
                             if test01==test03:
                                 x1 = x3
@@ -580,19 +577,16 @@ cdef class Grid:
                 else:   
                     # Cut-cell edge.
                     # Bisect repeatedly the possible cut cell edges to get length of each. 
-                    y1 = yMesh[jj]#-5.*dyMin
-                    y2 = yMesh[jj+1]#+5.*dyMin
+                    y1 = yMesh[jj]
+                    y2 = yMesh[jj+1]
                     x = xMesh[ii]
                     test01 = boundFunc(x,y1)
                     test02 = boundFunc(x,y2)
-#                    test03 = boundFunc(x,y3)
-                    if test01 == 1 and test02 == 1:# and test03 == 1:
-                        ds[currentInd+np] = dy    
+                    if test01 == 1 and test02 == 1:
+                        ds[currentInd+np] = dy#(1.-self.scanAroundPoint)*dy        # WORKAROUND. Maybe better possible.
                     else:
                         for kk in range(boundAccIter):
                             y3 = 0.5*(y1+y2)
-#                            test01 = boundFunc(x,y1)
-#                            test02 = boundFunc(x,y2)
                             test03 = boundFunc(x,y3)
                             if test01==test03:
                                 y1 = y3
@@ -644,9 +638,6 @@ cdef class Grid:
                         cutCellPointsInd[2*(currentInd-nx)] = kk
                     else:
                         cutCellPointsInd[2*(currentInd-nx)+1] = kk
-#                    print '--- x ---'
-#                    print kk, ii, jj, boundaryPoints[2*kk], boundaryPoints[2*kk+1], boundaryPointsInd[kk]
-#                    print cutCellPointsInd[2*currentInd], cutCellPointsInd[2*currentInd+1],cutCellPointsInd[2*(currentInd-nx)], cutCellPointsInd[2*(currentInd-nx)+1]
                     kk += 1
                 if insideEdges[currentInd+np]==1:
                     if insidePoints[currentInd]==1:
@@ -665,9 +656,6 @@ cdef class Grid:
                         cutCellPointsInd[2*(currentInd-1)] = kk
                     else:
                         cutCellPointsInd[2*(currentInd-1)+1] = kk
-#                    print '--- y ---'
-#                    print kk, ii, jj, boundaryPoints[2*kk], boundaryPoints[2*kk+1], boundaryPointsInd[kk]
-#                    print cutCellPointsInd[2*currentInd], cutCellPointsInd[2*currentInd+1],cutCellPointsInd[2*(currentInd-1)], cutCellPointsInd[2*(currentInd-1)+1]
                     kk += 1
         
         # Calculation of faces. Primary grid. Linear approximation.
@@ -877,58 +865,233 @@ cdef class Grid:
         self.edgeToNode = spsp.csc_matrix(spsp.coo_matrix((values[:kk],(rows[:kk],columns[:kk])),shape=(2*np,2*np)))
 
         
-        # Boundary interpolation for correct cut-cell fields at boundary.
-        # This is the only really messy and hard part in this whole class. One has to interpolate
-        # at the boundary by using the continuity conditions, which leads to lots of angles and so on...
-        # I am very sure that this is in principle is much better than many other people do it (they just
-        # ignore the cut cells and work on the equidistant mesh). For openEcloud we need good field
-        # interpolation at the wall, so no way around it.
-        # There is some stuff included to extrapolate accurately to the equidistant grid, but the last
-        # step will be done in the next block.
-        for jj in range(1, ny-1):
-            for ii in range(1, nx-1):
-                currentInd = ii+jj*nx
-                if insideEdges[currentInd]==0 or insideEdges[currentInd]==2:
-                    cosAlpha[currentInd] = 0.
-                    sinAlpha[currentInd] = 0.              
-                else:
-#                    temp = 0.5 * ( acos(-cutCellNormalVectors[2*currentInd]) + acos(-cutCellNormalVectors[2*(currentInd-nx)]) )
-                    temp = 0.5 * ( atan2(cutCellNormalVectors[2*currentInd+1],cutCellNormalVectors[2*currentInd]) + 
-                                   atan2(cutCellNormalVectors[2*(currentInd-nx)+1],cutCellNormalVectors[2*(currentInd-nx)]) )
-                    cosAlpha[currentInd] = cos(temp)
-                    sinAlpha[currentInd] = sin(temp)
-#                    print 'sincosalpha', currentInd, temp/pi*180, cosAlpha[currentInd], sinAlpha[currentInd], cosAlpha[currentInd]**2+sinAlpha[currentInd]**2
-#                    print atan2(cutCellNormalVectors[2*currentInd+1],cutCellNormalVectors[2*currentInd])/pi*180, atan2(cutCellNormalVectors[2*(currentInd-nx)+1],cutCellNormalVectors[2*(currentInd-nx)])/pi*180
-                if insideEdges[currentInd+np]==0 or insideEdges[currentInd+np]==2:
-                    cosBeta[currentInd] = 0.
-                    sinBeta[currentInd] = 0.
-                else:
-#                    temp = 0.5 * ( acos(-cutCellNormalVectors[2*currentInd+1]) + acos(-cutCellNormalVectors[2*(currentInd-1)+1]) )
-                    temp = 0.5 * ( atan2(-cutCellNormalVectors[2*currentInd],cutCellNormalVectors[2*currentInd+1]) + 
-                                   atan2(-cutCellNormalVectors[2*(currentInd-1)],cutCellNormalVectors[2*(currentInd-1)+1]) )
-                    cosBeta[currentInd] = cos(temp)
-                    sinBeta[currentInd] = sin(temp)
-#                    print 'sincosbeta', currentInd, temp/pi*180, cosBeta[currentInd], sinBeta[currentInd], cosBeta[currentInd]**2+sinBeta[currentInd]**2
-#                    print atan2(-cutCellNormalVectors[2*currentInd],cutCellNormalVectors[2*currentInd+1])/pi*180, atan2(-cutCellNormalVectors[2*(currentInd-1)],cutCellNormalVectors[2*(currentInd-1)+1])/pi*180
+#        # Boundary interpolation for correct cut-cell fields at boundary.
+#        # This is the only really messy and hard part in this whole class. One has to interpolate
+#        # at the boundary by using the continuity conditions, which leads to lots of angles and so on...
+#        # I am very sure that this is in principle is much better than many other people do it (they just
+#        # ignore the cut cells and work on the equidistant mesh). For openEcloud we need good field
+#        # interpolation at the wall, so no way around it.
+#        # There is some stuff included to extrapolate accurately to the equidistant grid, but the last
+#        # step will be done in the next block.
+#        for jj in range(1, ny-1):
+#            for ii in range(1, nx-1):
+#                currentInd = ii+jj*nx
+#                if insideEdges[currentInd]==0 or insideEdges[currentInd]==2:
+#                    cosAlpha[currentInd] = 0.
+#                    sinAlpha[currentInd] = 0.              
+#                else:
+#                    # TODO check angle calculation again
+#                    # Take average of the two cells adjescent to the edge as the edge-boundary impact angle
+#                    temp = 0.5 * ( atan2(cutCellNormalVectors[2*currentInd+1],cutCellNormalVectors[2*currentInd]) + 
+#                                   atan2(cutCellNormalVectors[2*(currentInd-nx)+1],cutCellNormalVectors[2*(currentInd-nx)]) )
+#                    cosAlpha[currentInd] = cos(temp)
+#                    sinAlpha[currentInd] = sin(temp)
+##                    print ii, jj, temp/pi*180, cosAlpha[currentInd], sinAlpha[currentInd]
+#                if insideEdges[currentInd+np]==0 or insideEdges[currentInd+np]==2:
+#                    cosBeta[currentInd] = 0.
+#                    sinBeta[currentInd] = 0.
+#                else:
+#                    # TODO check angle calculation again
+#                    # Take average of the two cells adjescent to the edge as the edge-boundary impact angle
+#                    temp = 0.5 * ( atan2(-cutCellNormalVectors[2*currentInd],cutCellNormalVectors[2*currentInd+1]) + 
+#                                   atan2(-cutCellNormalVectors[2*(currentInd-1)],cutCellNormalVectors[2*(currentInd-1)+1]) )
+#                    cosBeta[currentInd] = cos(temp)
+#                    sinBeta[currentInd] = sin(temp)
+##                    print ii, jj, temp/pi*180, cosBeta[currentInd], sinBeta[currentInd]
+#        for ii in range(nx):
+#            for jj in range(ny):
+#                currentInd = ii+jj*nx
+#                connectedEdgesInv[currentInd] = 0.
+#        for jj in range(1,ny-1):
+#            for ii in range(1,nx-1):
+#                currentInd = ii+jj*nx
+#                if insidePoints[currentInd] == 0:
+#                    connectedEdgesInv[currentInd] = insideEdges[currentInd] + insideEdges[currentInd-1] + \
+#                                                    insideEdges[currentInd+np] + insideEdges[currentInd-nx+np]
+#                if connectedEdgesInv[currentInd] > 1.:
+#                    connectedEdgesInv[currentInd] = 1./connectedEdgesInv[ii+jj*nx]     
+#        kk = 0
+#        for jj in range(1,ny-1):
+#            for ii in range(1,nx-1):
+#                currentInd = ii+jj*nx
+#                # Fields at inside points are unchanged.
+#                if insidePoints[currentInd] == 1:
+#                    rows[kk] = currentInd
+#                    columns[kk] = currentInd
+#                    values[kk] = 1.              
+#                    kk += 1 
+#                    rows[kk] = currentInd+np
+#                    columns[kk] = currentInd+np
+#                    values[kk] = 1.              
+#                    kk += 1    
+#                # Boundary edges.
+#                else:
+#                    if insideEdges[currentInd] == 1:
+#                        # X to x in negative x-direction.
+#                        rows[kk] = currentInd
+#                        columns[kk] = currentInd+1
+#                        values[kk] = connectedEdgesInv[currentInd]*(1. - sinAlpha[currentInd]**2*dx/ds[currentInd])
+#                        kk += 1
+#                        # Y to x in negative x-direction.
+#                        rows[kk] = currentInd
+#                        columns[kk] = currentInd+np+1
+#                        values[kk] = -connectedEdgesInv[currentInd]*(cosAlpha[currentInd]*sinAlpha[currentInd]*dx/ds[currentInd])
+#                        kk += 1
+#                        # Y to y in negative x-direction.
+#                        rows[kk] = currentInd+np
+#                        columns[kk] = currentInd+np+1
+#                        values[kk] = connectedEdgesInv[currentInd]*(1. - cosAlpha[currentInd]**2*dx/ds[currentInd])            
+#                        kk += 1
+#                        # X to y in negative x-direction
+#                        rows[kk] = currentInd+np
+#                        columns[kk] = currentInd+1
+#                        values[kk] = -connectedEdgesInv[currentInd]*(cosAlpha[currentInd]*sinAlpha[currentInd]*dx/ds[currentInd])
+#                        kk += 1
+#                    elif insideEdges[currentInd-1] == 1:
+#                        # X to x in positive x-direction.
+#                        rows[kk] = currentInd
+#                        columns[kk] = currentInd-1
+#                        values[kk] = connectedEdgesInv[currentInd]*(1. - sinAlpha[currentInd]**2*dx/ds[currentInd-1])                
+#                        kk += 1   
+#                        # Y to x in positive x-direction.
+#                        rows[kk] = currentInd
+#                        columns[kk] = currentInd+np-1
+#                        values[kk] = -connectedEdgesInv[currentInd]*(cosAlpha[currentInd-1]*sinAlpha[currentInd-1]*dx/ds[currentInd-1])                                    
+#                        kk += 1  
+#                        # Y to y in positive x-direction.
+#                        rows[kk] = currentInd+np
+#                        columns[kk] = currentInd+np-1
+#                        values[kk] = connectedEdgesInv[currentInd]*(1. - cosAlpha[currentInd-1]**2*dx/ds[currentInd-1])            
+#                        kk += 1
+#                        # X to y in positive x-direction
+#                        rows[kk] = currentInd+np
+#                        columns[kk] = currentInd-1
+#                        values[kk] = -connectedEdgesInv[currentInd]*(cosAlpha[currentInd-1]*sinAlpha[currentInd-1]*dx/ds[currentInd-1])
+#                        kk += 1
+#                    if insideEdges[currentInd+np] == 1:
+#                        # X to x in negative y-direction.
+#                        rows[kk] = currentInd
+#                        columns[kk] = currentInd+nx
+#                        values[kk] = connectedEdgesInv[currentInd]*(1. - cosBeta[currentInd]**2*dx/ds[currentInd+np])
+#                        kk += 1
+#                        # Y to x in negative y-direction.
+#                        rows[kk] = currentInd
+#                        columns[kk] = currentInd+np+nx
+#                        values[kk] = -connectedEdgesInv[currentInd]*(cosBeta[currentInd]*sinBeta[currentInd]*dx/ds[currentInd+np])
+#                        kk += 1
+#                        # Y to y in negative y-direction.
+#                        rows[kk] = currentInd+np
+#                        columns[kk] = currentInd+np+nx
+#                        values[kk] = connectedEdgesInv[currentInd]*(1. - sinBeta[currentInd]**2*dx/ds[currentInd+np])            
+#                        kk += 1                            
+#                        # X to y in negative y-direction
+#                        rows[kk] = currentInd+np
+#                        columns[kk] = currentInd+nx
+#                        values[kk] = -connectedEdgesInv[currentInd]*(cosBeta[currentInd]*sinBeta[currentInd]*dx/ds[currentInd+np])
+#                        kk += 1
+#                    elif insideEdges[currentInd+np-nx] == 1:
+#                        # X to x in positive y-direction.
+#                        rows[kk] = currentInd
+#                        columns[kk] = currentInd-nx
+#                        values[kk] = connectedEdgesInv[currentInd]*(1. - cosBeta[currentInd-nx]**2*dx/ds[currentInd+np-nx])                
+#                        kk += 1   
+#                        # Y to x in positive y-direction.
+#                        rows[kk] = currentInd
+#                        columns[kk] = currentInd+np-nx
+#                        values[kk] = -connectedEdgesInv[currentInd]*(cosBeta[currentInd-nx]*sinBeta[currentInd-nx]*dx/ds[currentInd+np-nx])                                    
+#                        kk += 1  
+#                        # Y to y in positive y-direction.
+#                        rows[kk] = currentInd+np
+#                        columns[kk] = currentInd+np-nx
+#                        values[kk] = connectedEdgesInv[currentInd]*(1. - sinBeta[currentInd-nx]**2*dx/ds[currentInd+np-nx])            
+#                        kk += 1
+#                        # X to y in positive y-direction
+#                        rows[kk] = currentInd+np
+#                        columns[kk] = currentInd-nx
+#                        values[kk] = -connectedEdgesInv[currentInd]*(cosBeta[currentInd-nx]*sinBeta[currentInd-nx]*dx/ds[currentInd+np-nx])
+#                        kk += 1
+#        
+#        self.edgeToNode = spsp.csc_matrix(spsp.coo_matrix((values[:kk],(rows[:kk],columns[:kk])),shape=(2*np,2*np))
+#                                          ).dot(self.edgeToNode)    
+
+# Second order extrapolation
+#                    if insideEdges[currentInd] == 1:
+#                        if currentInd < np-3 and insidePoints[currentInd+2] == 1:
+#                            rows[kk] = currentInd
+#                            columns[kk] = currentInd+2
+#                            values[kk] = -connectedEdgesInv[currentInd]
+#                            kk += 1
+#                            rows[kk] = currentInd
+#                            columns[kk] = currentInd+1
+#                            values[kk] = 2*connectedEdgesInv[currentInd]
+#                            kk += 1
+#                            rows[kk] = currentInd+np
+#                            columns[kk] = currentInd+np+2
+#                            values[kk] = -connectedEdgesInv[currentInd]
+#                            kk += 1
+#                            rows[kk] = currentInd+np
+#                            columns[kk] = currentInd+np+1
+#                            values[kk] = 2*connectedEdgesInv[currentInd]
+#                            kk += 1
+#                        else:
+#                            rows[kk] = currentInd
+#                            columns[kk] = currentInd+1
+#                            values[kk] = connectedEdgesInv[currentInd]
+#                            kk += 1
+#                            rows[kk] = currentInd+np
+#                            columns[kk] = currentInd+np+1
+#                            values[kk] = connectedEdgesInv[currentInd]
+#                            kk += 1                    
+#                    elif insideEdges[currentInd-1] == 1:
+#                        if currentInd > 2 and insidePoints[currentInd-2] == 1:
+#                            rows[kk] = currentInd-1
+#                            columns[kk] = currentInd+1
+#                            values[kk] = -connectedEdgesInv[currentInd-1]
+#                            kk += 1
+#                            rows[kk] = currentInd-1
+#                            columns[kk] = currentInd
+#                            values[kk] = 2*connectedEdgesInv[currentInd-1]
+#                            kk += 1
+#                            rows[kk] = currentInd+np-1
+#                            columns[kk] = currentInd+np+1
+#                            values[kk] = -connectedEdgesInv[currentInd-1]
+#                            kk += 1
+#                            rows[kk] = currentInd+np-1
+#                            columns[kk] = currentInd+np
+#                            values[kk] = 2*connectedEdgesInv[currentInd-1]
+#                            kk += 1
+#                        else:
+#                            rows[kk] = currentInd-1
+#                            columns[kk] = currentInd
+#                            values[kk] = connectedEdgesInv[currentInd-1]
+#                            kk += 1
+#                            rows[kk] = currentInd+np-1
+#                            columns[kk] = currentInd+np
+#                            values[kk] = connectedEdgesInv[currentInd-1]
+#                            kk += 1  
+
+        # Simplified boundary extrapolation for correct cut-cell fields at boundary.
+        # This is the only inaccurate step of the whole field calculation, but trying to do
+        # anything more sophisticated actually worsens the field quality.
+        # The only reason to improve this is to move to different meshes and/or finite elements.
         for ii in range(nx):
-            connectedEdgesInv[ii] = 0.
-            connectedEdgesInv[ii+nx] = 0.          
-        for jj in range(1,ny-1):
-            connectedEdgesInv[jj*nx] = 0.
-            connectedEdgesInv[1+jj*nx] = 0.
+            for jj in range(ny):
+                currentInd = ii+jj*nx
+                connectedEdgesInv[currentInd] = 0.
         for jj in range(1,ny-1):
             for ii in range(1,nx-1):
-                if insidePoints[ii+jj*nx]==0:
-                    connectedEdgesInv[ii+jj*nx] = insideEdges[ii+jj*nx] + insideEdges[ii-1+jj*nx] + \
-                                                  insideEdges[ii+jj*nx+np] + insideEdges[ii+(jj-1)*nx+np]
-                if connectedEdgesInv[ii+jj*nx]>1.:
-                    connectedEdgesInv[ii+jj*nx] = 1./connectedEdgesInv[ii+jj*nx]     
+                currentInd = ii+jj*nx
+                if insidePoints[currentInd] == 0:
+                    connectedEdgesInv[currentInd] = insideEdges[currentInd] + insideEdges[currentInd-1] + \
+                                                    insideEdges[currentInd+np] + insideEdges[currentInd-nx+np]
+                if connectedEdgesInv[currentInd] > 1.:
+                    connectedEdgesInv[currentInd] = 1./connectedEdgesInv[ii+jj*nx]     
         kk = 0
         for jj in range(1,ny-1):
             for ii in range(1,nx-1):
                 currentInd = ii+jj*nx
                 # Fields at inside points are unchanged.
-                if insidePoints[currentInd]==1:
+                if insidePoints[currentInd] == 1:
                     rows[kk] = currentInd
                     columns[kk] = currentInd
                     values[kk] = 1.              
@@ -939,100 +1102,54 @@ cdef class Grid:
                     kk += 1    
                 # Boundary edges.
                 else:
-                    if insideEdges[currentInd]==1:
-                        # X to x in negative x-direction.
+                    if insideEdges[currentInd] == 1:
                         rows[kk] = currentInd
                         columns[kk] = currentInd+1
-                        values[kk] = connectedEdgesInv[currentInd]*((cosAlpha[currentInd]**2-1.)*dx/ds[currentInd] + 1.)
+                        values[kk] = connectedEdgesInv[currentInd]
                         kk += 1
-                        # Y to x in negative x-direction.
-                        rows[kk] = currentInd
-                        columns[kk] = currentInd+np+1
-                        values[kk] = -connectedEdgesInv[currentInd]*(cosAlpha[currentInd]*sinAlpha[currentInd]*dx/ds[currentInd])
-                        kk += 1
-                        # Y to y in negative x-direction.
                         rows[kk] = currentInd+np
                         columns[kk] = currentInd+np+1
-                        values[kk] = connectedEdgesInv[currentInd]*((sinAlpha[currentInd]**2-1.)*dx/ds[currentInd] + 1.)            
-                        kk += 1
-                        # X to y in negative x-direction
-                        rows[kk] = currentInd+np
-                        columns[kk] = currentInd+1
-                        values[kk] = -connectedEdgesInv[currentInd]*(cosAlpha[currentInd]*sinAlpha[currentInd]*dx/ds[currentInd])
-                        kk += 1
-                    elif insideEdges[currentInd-1]==1:
-                        # X to x in positive x-direction.
+                        values[kk] = connectedEdgesInv[currentInd]
+                        kk += 1                    
+                    elif insideEdges[currentInd-1] == 1:
                         rows[kk] = currentInd
                         columns[kk] = currentInd-1
-                        values[kk] = connectedEdgesInv[currentInd]*((cosAlpha[currentInd-1]**2-1.)*dx/ds[currentInd-1]+1.)                
-                        kk += 1   
-                        # Y to x in positive x-direction.
-                        rows[kk] = currentInd
-                        columns[kk] = currentInd+np-1
-                        values[kk] = -connectedEdgesInv[currentInd]*(cosAlpha[currentInd-1]*sinAlpha[currentInd-1]*dx/ds[currentInd-1])                                    
-                        kk += 1  
-                        # Y to y in positive x-direction.
+                        values[kk] = connectedEdgesInv[currentInd]
+                        kk += 1
                         rows[kk] = currentInd+np
                         columns[kk] = currentInd+np-1
-                        values[kk] = connectedEdgesInv[currentInd]*((sinAlpha[currentInd-1]**2-1.)*dx/ds[currentInd-1]+1.)            
-                        kk += 1
-                        # X to y in positive x-direction
-                        rows[kk] = currentInd+np
-                        columns[kk] = currentInd-1
-                        values[kk] = -connectedEdgesInv[currentInd]*(cosAlpha[currentInd-1]*sinAlpha[currentInd-1]*dx/ds[currentInd-1])
-                        kk += 1
-                    if insideEdges[currentInd+np]==1:
-                        # X to x in negative y-direction.
-                        rows[kk] = currentInd
-                        columns[kk] = currentInd+nx
-                        values[kk] = connectedEdgesInv[currentInd]*((sinBeta[currentInd]**2-1.)*dx/ds[currentInd+np] + 1.)
-                        kk += 1
-                        # Y to x in negative y-direction.
-                        rows[kk] = currentInd
-                        columns[kk] = currentInd+np+nx
-                        values[kk] = -connectedEdgesInv[currentInd]*(cosBeta[currentInd]*sinBeta[currentInd]*dx/ds[currentInd+np])
-                        kk += 1
-                        # Y to y in negative y-direction.
-                        rows[kk] = currentInd+np
-                        columns[kk] = currentInd+np+nx
-                        values[kk] = connectedEdgesInv[currentInd]*((cosBeta[currentInd]**2-1.)*dx/ds[currentInd+np] + 1.)            
-                        kk += 1                            
-                        # X to y in negative y-direction
-                        rows[kk] = currentInd+np
-                        columns[kk] = currentInd+nx
-                        values[kk] = -connectedEdgesInv[currentInd]*(cosBeta[currentInd]*sinBeta[currentInd]*dx/ds[currentInd+np])
-                        kk += 1
-                    elif insideEdges[currentInd+np-nx]==1:
-                        # X to x in positive y-direction.
-                        rows[kk] = currentInd
-                        columns[kk] = currentInd-nx
-                        values[kk] = connectedEdgesInv[currentInd]*((sinBeta[currentInd-nx]**2-1.)*dx/ds[currentInd+np-nx]+1.)                
-                        kk += 1   
-                        # Y to x in positive y-direction.
-                        rows[kk] = currentInd
-                        columns[kk] = currentInd+np-nx
-                        values[kk] = -connectedEdgesInv[currentInd]*(cosBeta[currentInd-nx]*sinBeta[currentInd-nx]*dx/ds[currentInd+np-nx])                                    
+                        values[kk] = connectedEdgesInv[currentInd]
                         kk += 1  
-                        # Y to y in positive y-direction.
+                    if insideEdges[currentInd+np] == 1:
+                        rows[kk] = currentInd
+                        columns[kk] = currentInd+nx
+                        values[kk] = connectedEdgesInv[currentInd]
+                        kk += 1
+                        rows[kk] = currentInd+np
+                        columns[kk] = currentInd+np+nx
+                        values[kk] = connectedEdgesInv[currentInd]
+                        kk += 1   
+                    if insideEdges[currentInd+np-nx] == 1:
+                        rows[kk] = currentInd
+                        columns[kk] = currentInd-nx
+                        values[kk] = connectedEdgesInv[currentInd]
+                        kk += 1
                         rows[kk] = currentInd+np
                         columns[kk] = currentInd+np-nx
-                        values[kk] = connectedEdgesInv[currentInd]*((cosBeta[currentInd-nx]**2-1.)*dx/ds[currentInd+np-nx]+1.)            
-                        kk += 1
-                        # X to y in positive y-direction
-                        rows[kk] = currentInd+np
-                        columns[kk] = currentInd-nx
-                        values[kk] = -connectedEdgesInv[currentInd]*(cosBeta[currentInd-nx]*sinBeta[currentInd-nx]*dx/ds[currentInd+np-nx])
-                        kk += 1
+                        values[kk] = connectedEdgesInv[currentInd]
+                        kk += 1 
         
         self.edgeToNode = spsp.csc_matrix(spsp.coo_matrix((values[:kk],(rows[:kk],columns[:kk])),shape=(2*np,2*np))
                                           ).dot(self.edgeToNode)    
-               
-        # Last step of the extrapolation to equidistant grid. Makes interpolation later easier/faster.  
+
+           
+        # Last step of the extrapolation to equidistant grid for cells with three points. 
+        # Makes interpolation later easier/faster.
         kk = 0
         for jj in range(1,ny-1):
             for ii in range(1,nx-1):
                 currentInd = ii+jj*nx
-                # Fields at inside points are unchanged.
+                # Fields at inside points, completely outside points and non-triangular boundary points are unchanged
                 rows[kk] = currentInd
                 columns[kk] = currentInd
                 values[kk] = 1.              
@@ -1042,78 +1159,117 @@ cdef class Grid:
                 values[kk] = 1.              
                 kk += 1 
                 if insidePoints[currentInd]==0:
+                    # Fields at triangular boundary cells need to be extrapolated
+                    # +X -Y
                     if insidePoints[currentInd-1]==0 and insidePoints[currentInd+nx]==0 and insidePoints[currentInd-1+nx]==1:
                         rows[kk] = currentInd
+                        columns[kk] = currentInd-1+nx
+                        values[kk] = -1.
+                        kk += 1
+                        rows[kk] = currentInd
                         columns[kk] = currentInd-1
-                        values[kk] = 0.5
+                        values[kk] = 1.
                         kk += 1
                         rows[kk] = currentInd
                         columns[kk] = currentInd+nx
-                        values[kk] = 0.5
+                        values[kk] = 1.
+                        kk += 1
+                        rows[kk] = currentInd+np
+                        columns[kk] = currentInd+np-1+nx
+                        values[kk] = -1.
                         kk += 1
                         rows[kk] = currentInd+np
                         columns[kk] = currentInd-1+np
-                        values[kk] = 0.5
+                        values[kk] = 1.
                         kk += 1
                         rows[kk] = currentInd+np
                         columns[kk] = currentInd+nx+np
-                        values[kk] = 0.5
+                        values[kk] = 1.
                         kk += 1
+                    # -X -Y
                     elif insidePoints[currentInd+1]==0 and insidePoints[currentInd+nx]==0 and insidePoints[currentInd+1+nx]==1:
                         rows[kk] = currentInd
+                        columns[kk] = currentInd+1+nx
+                        values[kk] = -1.
+                        kk += 1                        
+                        rows[kk] = currentInd
                         columns[kk] = currentInd+1
-                        values[kk] = 0.5
+                        values[kk] = 1.
                         kk += 1
                         rows[kk] = currentInd
                         columns[kk] = currentInd+nx
-                        values[kk] = 0.5
+                        values[kk] = 1.
+                        kk += 1
+                        rows[kk] = currentInd+np
+                        columns[kk] = currentInd+np+1+nx
+                        values[kk] = -1.
                         kk += 1
                         rows[kk] = currentInd+np
                         columns[kk] = currentInd+1+np
-                        values[kk] = 0.5
+                        values[kk] = 1.
                         kk += 1
                         rows[kk] = currentInd+np
                         columns[kk] = currentInd+nx+np
-                        values[kk] = 0.5
+                        values[kk] = 1.
                         kk += 1
+                    # -X +Y
                     elif insidePoints[currentInd+1]==0 and insidePoints[currentInd-nx]==0 and insidePoints[currentInd+1-nx]==1:
                         rows[kk] = currentInd
+                        columns[kk] = currentInd+1-nx
+                        values[kk] = -1.
+                        kk += 1
+                        rows[kk] = currentInd
                         columns[kk] = currentInd+1
-                        values[kk] = 0.5
+                        values[kk] = 1.
                         kk += 1
                         rows[kk] = currentInd
                         columns[kk] = currentInd-nx
-                        values[kk] = 0.5
+                        values[kk] = 1.
+                        kk += 1
+                        rows[kk] = currentInd+np
+                        columns[kk] = currentInd+np+1-nx
+                        values[kk] = -1.
                         kk += 1
                         rows[kk] = currentInd+np
                         columns[kk] = currentInd+1+np
-                        values[kk] = 0.5
+                        values[kk] = 1.
                         kk += 1
                         rows[kk] = currentInd+np
                         columns[kk] = currentInd-nx+np
-                        values[kk] = 0.5
+                        values[kk] = 1.
                         kk += 1
+                    # +X +Y
                     elif insidePoints[currentInd-1]==0 and insidePoints[currentInd-nx]==0 and insidePoints[currentInd-1-nx]==1:
                         rows[kk] = currentInd
+                        columns[kk] = currentInd-1-nx
+                        values[kk] = -1.
+                        kk += 1
+                        rows[kk] = currentInd
                         columns[kk] = currentInd-1
-                        values[kk] = 0.5
+                        values[kk] = 1.
                         kk += 1
                         rows[kk] = currentInd
                         columns[kk] = currentInd-nx
-                        values[kk] = 0.5
+                        values[kk] = 1.
+                        kk += 1
+                        rows[kk] = currentInd+np
+                        columns[kk] = currentInd+np-1-nx
+                        values[kk] = -1.
                         kk += 1
                         rows[kk] = currentInd+np
                         columns[kk] = currentInd-1+np
-                        values[kk] = 0.5
+                        values[kk] = 1.
                         kk += 1
                         rows[kk] = currentInd+np
                         columns[kk] = currentInd-nx+np
-                        values[kk] = 0.5
+                        values[kk] = 1.
                         kk += 1
-     
+                    
 
-#        self.edgeToNode = spsp.csc_matrix(spsp.coo_matrix((values[:kk],(rows[:kk],columns[:kk])),shape=(2*np,2*np))
-#                                          ).dot(self.edgeToNode)  
+        self.edgeToNode = spsp.csc_matrix(spsp.coo_matrix((values[:kk],(rows[:kk],columns[:kk])),shape=(2*np,2*np))
+                                          ).dot(self.edgeToNode)
+
+
     
     '''
     Getter functions from here on.
