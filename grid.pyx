@@ -4,6 +4,7 @@
 #cython: cdivision=True
 
 import numpy
+import matplotlib.pyplot as mpl
 cimport numpy
 cimport cython        
 import scipy.sparse as spsp
@@ -19,8 +20,10 @@ cdef extern from "math.h":
     double atan2(double x, double y) nogil
     double sqrt(double x) nogil
     double log2(double x) nogil
+    double fabs(double x) nogil
 
- 
+
+
 '''
 Class to calculate and store grid quantities.
 It looks like a lot happens here (especially the cut-cell stuff), 
@@ -94,11 +97,68 @@ cdef class Grid:
         elif boundType == 3:
             self.boundFunc = boundFunc
             self.computeCutCellGridGeom()
+        elif boundType == 4:
+            self.prepareBoundFuncPoints(boundFunc)
+            self.boundFunc = self.pointInPolygon
+            self.computeCutCellGridGeom()
         else:
             raise NotImplementedError("Not yet implemented.")
-            
 
- 
+
+    cpdef unsigned int pointInPolygon(Grid self, double xx, double yy):
+        
+        cdef:
+            int res
+            double* xy = [0.,0.]
+            
+        xy[0] = fabs(xx)
+        xy[1] = fabs(yy)
+        res = _wn_PnPoly(xy, &self.boundFuncPoints[0,0], self.nBoundFuncPoints) 
+        
+        if res == 0:
+            return 0
+        else:
+            return 1
+        
+
+    cdef void prepareBoundFuncPoints(Grid self, double[:,:] boundFuncPoints):
+        
+        cdef:
+            unsigned int ii, jj
+            double minArea
+            unsigned short[:] necessaryPoints           
+            
+        nBoundFuncPoints = boundFuncPoints.shape[0]
+        # Clean up unnecessary points
+        necessaryPoints = numpy.ones(nBoundFuncPoints, dtype=numpy.ushort)
+        ii = 0
+        while ii+2 < nBoundFuncPoints:
+            inc = 0
+            while ii+2+inc < nBoundFuncPoints:
+                minArea = 1.e-16 * ( sqrt( (boundFuncPoints[ii,0]-boundFuncPoints[ii+1,0])**2 + 
+                                           (boundFuncPoints[ii,1]-boundFuncPoints[ii+1,1])**2) *
+                                     sqrt( (boundFuncPoints[ii+1+inc,0]-boundFuncPoints[ii+2+inc,0])**2 + 
+                                           (boundFuncPoints[ii+1+inc,1]-boundFuncPoints[ii+2+inc,1])**2) )
+                area = ( boundFuncPoints[ii,0]*(boundFuncPoints[ii+1+inc,1]-boundFuncPoints[ii+2+inc,1]) +
+                         boundFuncPoints[ii+1+inc,0]*(boundFuncPoints[ii+2+inc,1]-boundFuncPoints[ii,1]) +
+                         boundFuncPoints[ii+2+inc,0]*(boundFuncPoints[ii,1]-boundFuncPoints[ii+1+inc,1]) )
+                if fabs(minArea) > fabs(area):
+                    inc += 1
+                else:
+                    break
+            for jj in range(ii+1, ii+inc+1):
+                necessaryPoints[jj] = 0
+            ii += inc + 1
+        self.nBoundFuncPoints = numpy.sum(necessaryPoints)
+        self.boundFuncPoints = numpy.zeros((self.nBoundFuncPoints,2), dtype=numpy.double)
+        jj = 0
+        for ii in range(nBoundFuncPoints):
+            if necessaryPoints[ii] == 1:
+                self.boundFuncPoints[jj,0] = boundFuncPoints[ii,0]
+                self.boundFuncPoints[jj,1] = boundFuncPoints[ii,1]
+                jj += 1
+
+    
     '''
     Helper function for the setup of staircase geometries. Calculates grid quantities.
     
@@ -1385,6 +1445,41 @@ cpdef unsigned short _boundFuncElliptical(double x, double y, double aSqInv, dou
         return 1
     else:
         return 0    
+
+
+
+# http://geomalgorithms.com/a03-_inclusion.html
+cdef int _isLeft(double* P0, double* P1, double* P2) nogil:
+
+    cdef:
+        double res
+
+    res = ( (P1[0] - P0[0]) * (P2[1] - P0[1]) - (P2[0] -  P0[0]) * (P1[1] - P0[1]) )
+    if res > 0:
+        return 1
+    elif res < 0:
+        return -1
+    return 0
+
+cdef int _wn_PnPoly(double* PP, double* VV, int nn) nogil:
+    
+    cdef:
+        int wn = 0      #the winding number counter
+        unsigned int ii
+
+    #loop through all edges of the polygon
+    for ii in range(nn):            # edge from V[i] to  V[i+1]
+        if VV[2*ii+1] <= PP[1]:     #start y <= P.y
+            if VV[2*(ii+1)+1] > PP[1]:
+                 if _isLeft( &VV[2*ii], &VV[2*(ii+1)], PP) > 0:
+                     wn += 1        #have a valid up intersect
+        else:   #start y > P.y (no test needed)
+            if VV[2*(ii+1)+1] <= PP[1]:    #a downward crossing
+                 if _isLeft( &VV[2*ii], &VV[2*(ii+1)], PP) < 0:
+                     wn -= 1        #have  a valid down intersect
+    return wn
+
+
 
 
 
