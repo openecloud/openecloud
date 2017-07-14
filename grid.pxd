@@ -14,9 +14,14 @@ cdef class Grid:
         double[:,:] cutCellNormalVectors
         unsigned short[:] insidePoints, insideEdges, insideFaces 
         object boundFunc, edgeToNode
-        
+        double[:,:] boundFuncPoints
+        unsigned int nBoundFuncPoints    
+
         void computeStaircaseGridGeom(Grid self)
         void computeCutCellGridGeom(Grid self)
+        void prepareBoundFuncPoints(Grid self, double[:,:] boundFuncPoints)
+
+    cpdef unsigned int pointInPolygon(Grid self, double xx, double yy)
     cpdef double getDx(Grid self)
     cpdef double getDy(Grid self)
     cpdef double getLx(Grid self)
